@@ -91,7 +91,7 @@ def create_remapped_field(fname, tgt_start, tgt_end, var, monthly):
 #############################################################################
 
 def get_concat_output_path(run_type, ref_start, ref_end):
-    out_path = "output/"+run_type+"_"+str(ref_start)+"_"+str(ref_end)+"/concat_sst_anoms/"
+    out_path = "../CREDIBLE_output/output/"+run_type+"_"+str(ref_start)+"_"+str(ref_end)+"/concat_sst_anoms/"
     return out_path
 
 #############################################################################

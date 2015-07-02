@@ -25,8 +25,9 @@ def get_cmip5_path():
 def get_output_directory(run_type, ref_sy, ref_ey, year=None):
     uname = os.uname()
     if uname[0] == "Darwin":
-        out_dir_base = "/Users/Neil/Coding/CREDIBLE_SST/output/"
-    elif uname[1] == "ouce-linux-01.ouce.ox.ac.uk":
+        out_dir_base = "/Users/Neil/Coding/CREDIBLE_output/output/"
+    elif uname[1] == "ouce-linux-01.ouce.ox.ac.uk" or \
+         uname[1] == "ouce-linux-02.ouce.ox.ac.uk":
         out_dir_base = "/soge-home/staff/coml0118/CREDIBLE_SST/output/"
         
     out_dir = out_dir_base + run_type+"_"+str(ref_sy)+"_"+str(ref_ey)

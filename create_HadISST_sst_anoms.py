@@ -51,7 +51,7 @@ def get_HadISST_year_mean_filename(run_n):
 #############################################################################
 
 def get_HadISST_output_directory(histo_sy, histo_ey, run_n):
-    out_base_dir = "output/"
+    out_base_dir = "/Users/Neil/Coding/CREDIBLE_output/output/"
     out_dir = out_base_dir + "HadISST_" + str(histo_sy) + "_" + str(histo_ey) + "_" + str(run_n)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -220,6 +220,16 @@ def create_HadISST_reference(histo_sy, histo_ey, ref_start, ref_end, run_n):
 
 #############################################################################
 
+def create_HadISST_reference_SIC(histo_sy, histo_ey, ref_start, ref_end, run_n):
+    in_fname = get_HadISST_input_filename(run_n)
+    out_fname = get_HadISST_reference_fname(histo_sy, histo_ey, ref_start, ref_end, run_n)
+    out_fname = out_fname[:-3] + "_sic.nc"
+    # use cdo to take the 1986->2005 (ref_start->ref_end) mean
+    cdo = Cdo()
+    cdo.ymonmean(input=" -selyear,"+str(ref_start)+"/"+str(ref_end)+" -selvar,sic "+in_fname+" ", output=out_fname)
+
+#############################################################################
+
 def plot_HadISST(histo_sy, histo_ey, run_n):
     smooth_fname  = get_HadISST_smooth_fname(histo_sy, histo_ey, run_n)
     resids_fname  = get_HadISST_residuals_fname(histo_sy, histo_ey, run_n)
@@ -301,6 +311,9 @@ if __name__ == "__main__":
 
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     histo_ey = 2010
+
+    create_HadISST_reference_SIC(histo_sy, histo_ey, ref_start, ref_end, run_n)
+    sys.exit()
 
     create_HadISST_reference(histo_sy, histo_ey, ref_start, ref_end, run_n)
     create_HadISST_smoothed(histo_sy, histo_ey, run_n)

@@ -1,0 +1,94 @@
+#! /usr/bin/env bash
+
+# create the ensemble means of the top 10 arctic / antarctic SST anomalies
+
+SST_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_1986_2005/concat_sst_anoms
+SST_OUT_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_2006_2100/tos
+
+SIC_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_1986_2005/concat_sic_anoms
+SIC_OUT_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_2006_2100/sic
+
+function mean_sst_anoms {
+    # arctic top 10 ensemble mean SST
+    #"CESM1-BGC", "GFDL-CM3", "CCSM4", "CESM1-CAM5", 
+    #"EC-EARTH", "MIROC5", "ACCESS1-3", "CMCC-CMS",
+    #"NorESM1-M", "ACCESS1-0"
+    
+    SST_FILES=""
+
+    for e in CESM1-BGC GFDL-CM3 CCSM4 CESM1-CAM5 EC-EARTH MIROC5 ACCESS1-3 CMCC-CMS NorESM1-M ACCESS1-0;
+    do
+        SST_FILES=$SST_FILES`echo -selyear,2006/2100 -selvar,tos $SST_DIR"/"*$e*2???_mon.nc`" "
+    done
+
+    SST_OUT=$SST_OUT_DIR/atlas_tos_Omon_arctic_rcp45_ens_mean_200601-210012_1x1_anoms.nc
+    cdo ensmean $SST_FILES $SST_OUT"_em"
+    cdo smooth9 $SST_OUT"_em" $SST_OUT
+    rm $SST_OUT"_em"
+    echo $SST_OUT
+
+    # antarctic top 10 ensemble mean SST
+    # CMCC-CM NorESM1-M MIROC-ESM GISS-E2-H-CC 
+    # ACCESS1-0 MRI-CGCM3 EC-EARTH 
+    # CMCC-CMS MIROC-ESM-CHEM bcc-csm1-1
+
+    SST_FILES=""
+
+    for e in CMCC-CM NorESM1-M MIROC-ESM GISS-E2-H-CC ACCESS1-0 MRI-CGCM3 EC-EARTH CMCC-CMS MIROC-ESM-CHEM bcc-csm1-1;
+    do
+        SST_FILES=$SST_FILES`echo -selyear,2006/2100 -selvar,tos $SST_DIR"/"*$e*2???_mon.nc`" "
+    done
+
+    SST_OUT=$SST_OUT_DIR/atlas_tos_Omon_antarctic_rcp45_ens_mean_200601-210012_1x1_anoms.nc
+    cdo ensmean $SST_FILES $SST_OUT"_em"
+    cdo smooth9 $SST_OUT"_em" $SST_OUT
+    rm $SST_OUT"_em"
+    echo $SST_OUT
+}
+
+function mean_sic_anoms {
+
+    
+    LSM_FILE=/Users/Neil/ClimateData/HadISST2/HadISST.2.1.0.0_sst_lsm.nc
+    
+    SIC_FILES=""
+
+    for e in $SIC_LIST;
+    do
+        SIC_FILE=`echo $SIC_DIR"/"*$e*2???_mon.nc`
+        ENS_MEAN_FILE="tmp1.nc"
+        cdo ensmean $SIC_FILE $ENS_MEAN_FILE
+        cdo add $LSM_FILE -mulc,0.01 -smooth9 -setrtomiss,-1e100,-1000 -selyear,2006/2100 $ENS_MEAN_FILE $e"_m.nc"
+        SIC_FILES=$SIC_FILES" "$e"_m.nc"
+        rm tmp1.nc
+    done
+
+    SIC_OUT=$SIC_OUT_DIR/atlas_sic_OImon_$HEMI""_rcp45_ens_mean_200601-210012_1x1_anoms.nc
+    cdo ensmean $SIC_FILES $SIC_OUT
+    echo $SIC_OUT
+
+    for e in $SIC_LIST;
+    do
+        rm $e"_m.nc"
+    done
+}
+
+#mean_sst_anoms
+
+    # arctic top 10 ensemble mean SST
+    #"CESM1-BGC", "GFDL-CM3", "CCSM4", "CESM1-CAM5", 
+    #"EC-EARTH", "MIROC5", "ACCESS1-3", "CMCC-CMS",
+    #"NorESM1-M", "ACCESS1-0"
+
+HEMI=arctic
+SIC_LIST="CESM1-BGC GFDL-CM3 CCSM4 CESM1-CAM5 EC-EARTH MIROC5 ACCESS1-3 CMCC-CMS NorESM1-M ACCESS1-0"
+mean_sic_anoms
+
+    # antarctic top 10 ensemble mean SST
+    # CMCC-CM NorESM1-M MIROC-ESM GISS-E2-H-CC 
+    # ACCESS1-0 MRI-CGCM3 EC-EARTH 
+    # CMCC-CMS MIROC-ESM-CHEM bcc-csm1-1
+    
+HEMI=antarctic
+SIC_LIST="CMCC-CM NorESM1-M MIROC-ESM GISS-E2-H-CC ACCESS1-0 MRI-CGCM3 EC-EARTH CMCC-CMS MIROC-ESM-CHEM bcc-csm1-1"
+mean_sic_anoms

@@ -1,0 +1,87 @@
+#! /usr/bin/env bash
+
+LSM_FILE=/Users/Neil/ClimateData/HadISST2/HadISST.2.1.0.0_sst_lsm.nc
+
+SIC_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_2006_2100/sic
+SST_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_2006_2100/tos
+
+# arctic top 10 ensemble mean
+#"CESM1-BGC", "GFDL-CM3", "CCSM4", "CESM1-CAM5", 
+#"EC-EARTH", "MIROC5", "ACCESS1-3", "CMCC-CMS",
+#"NorESM1-M", "ACCESS1-0"
+
+SIC_FILES="
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_CESM1-BGC_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_GFDL-CM3_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_CCSM4_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_CESM1-CAM5_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_EC-EARTH_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_MIROC5_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_ACCESS1-3_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_CMCC-CMS_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_NorESM1-M_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_ACCESS1-0_rcp45_ens_mean_200601-210012_1x1.nc
+"
+SIC_OUT=$SIC_DIR/atlas_sic_OImon_arctic_rcp45_ensmean_200601-210012_1x1.nc
+# calculate the ensemble mean, multiply by 0.01 to get the range between 0 and 1
+# and superimpose the HadISST lsm
+#cdo ensmean $SIC_FILES $SIC_OUT"_em"
+#cdo smooth9 -add $LSM_FILE -mulc,0.01 $SIC_OUT"_em" $SIC_OUT
+#rm $SIC_OUT"_em"
+
+SST_FILES="
+-selvar,tos $SST_DIR/atlas_tos_Omon_CESM1-BGC_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_GFDL-CM3_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_CCSM4_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_CESM1-CAM5_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_EC-EARTH_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_MIROC5_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_ACCESS1-3_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_CMCC-CMS_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_NorESM1-M_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_ACCESS1-0_rcp45_ens_mean_200601-210012_1x1.nc
+"
+SST_OUT=$SST_DIR/atlas_tos_Omon_arctic_rcp45_ensmean_200601-210012_1x1.nc
+cdo ensmean $SST_FILES $SST_OUT"_em"
+cdo smooth9 -add $LSM_FILE $SST_OUT"_em" $SST_OUT
+rm $SST_OUT"_em"
+
+# antarctic top 10 ensemble mean
+#"CMCC-CM", "NorESM1-M", "MIROC-ESM", 
+#"GISS-E2-H-CC", "ACCESS1-0", "MRI-CGCM3", 
+#"EC-EARTH", "CMCC-CMS", "MIROC-ESM-CHEM", 
+#"bcc-csm1-1"
+
+SIC_FILES="
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_CMCC-CM_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_NorESM1-M_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_MIROC-ESM_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_GISS-E2-H-CC_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_ACCESS1-0_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_MRI-CGCM3_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_EC-EARTH_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_CMCC-CMS_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_MIROC-ESM-CHEM_rcp45_ens_mean_200601-210012_1x1.nc
+-fillmiss -selvar,sic $SIC_DIR/atlas_sic_OImon_bcc-csm1-1_rcp45_ens_mean_200601-210012_1x1.nc
+"
+#SIC_OUT=$SIC_DIR/atlas_sic_OImon_antarctic_rcp45_ensmean_200601-210012_1x1.nc
+#cdo ensmean $SIC_FILES $SIC_OUT"_em"
+#cdo smooth9 -add $LSM_FILE -mulc,0.01 $SIC_OUT"_em" $SIC_OUT
+#rm $SIC_OUT"_em"
+
+SST_FILES="
+-selvar,tos $SST_DIR/atlas_tos_Omon_CMCC-CM_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_NorESM1-M_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_MIROC-ESM_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_GISS-E2-H-CC_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_ACCESS1-0_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_MRI-CGCM3_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_EC-EARTH_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_CMCC-CMS_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_MIROC-ESM-CHEM_rcp45_ens_mean_200601-210012_1x1.nc
+-selvar,tos $SST_DIR/atlas_tos_Omon_bcc-csm1-1_rcp45_ens_mean_200601-210012_1x1.nc
+"
+SST_OUT=$SST_DIR/atlas_tos_Omon_antarctic_rcp45_ensmean_200601-210012_1x1.nc
+cdo ensmean $SST_FILES $SST_OUT"_em"
+cdo smooth9 -add $LSM_FILE $SST_OUT"_em" $SST_OUT
+rm $SST_OUT"_em"
