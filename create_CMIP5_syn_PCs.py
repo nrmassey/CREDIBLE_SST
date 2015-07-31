@@ -64,7 +64,7 @@ def fit_marginal(pc_data, eof):
     # build the list of the starting values
     start_list = robjects.r("list(xi="+str(xi_guess)+",omega="+str(std_guess)+",alpha=0.0)")
     # fit the distribution
-    fit_sn = MASS.fitdistr(marginal_data, sn.dsn, start_list, method="Nelder")
+    fit_sn = MASS.fitdistr(marginal_data, sn.dsn, start_list, method="SANN")
     return fit_sn[0]
 
 #############################################################################

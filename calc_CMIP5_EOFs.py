@@ -466,6 +466,6 @@ if __name__ == "__main__":
     
     model_mean=False
     
-#    calc_CMIP5_EOFs(run_type, ref_start, ref_end, eof_year, model_mean, monthly)
-#    calc_CMIP5_PC_proj(run_type, ref_start, ref_end, eof_year, model_mean, monthly)
+    calc_CMIP5_EOFs(run_type, ref_start, ref_end, eof_year, model_mean, monthly)
+    calc_CMIP5_PC_proj(run_type, ref_start, ref_end, eof_year, model_mean, monthly)
     calc_CMIP5_PC_proj_scaling(run_type, ref_start, ref_end, eof_year, model_mean, monthly)

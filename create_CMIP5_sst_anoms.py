@@ -28,9 +28,9 @@ from netcdf_file import *
 import numpy
 
 # uncomment this on local machine
-#import pyximport
-#pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
-#from running_gradient_filter import *
+import pyximport
+pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
+from running_gradient_filter import *
 
 #############################################################################
 
@@ -134,7 +134,7 @@ def get_concat_anom_sst_smooth_model_mean_fname(idx0, idx1, run_type, ref_start,
 
 def get_concat_anom_sst_ens_mean_fname(run_type, ref_start, ref_end, monthly):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_rcp45_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean"
+    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
@@ -145,7 +145,7 @@ def get_concat_anom_sst_ens_mean_fname(run_type, ref_start, ref_end, monthly):
 
 def get_concat_anom_sst_ens_mean_smooth_fname(run_type, ref_start, ref_end, monthly):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_rcp45_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean_smooth"
+    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean_smooth"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
@@ -386,7 +386,7 @@ def smooth_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
     # get the filtered set of cmip5 models / runs
     cmip5_rcp_idx = read_cmip5_index_file(run_type, ref_start, ref_end)
     n_ens = len(cmip5_rcp_idx)
-    
+       
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     
     # get the ensemble mean
@@ -394,9 +394,9 @@ def smooth_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
     ens_mean_fh = netcdf_file(ens_mean_fname)
     ens_mean = ens_mean_fh.variables["tos"][:].byteswap().newbyteorder()
     ens_mean_fh.close()
-        
+
     for idx in range(start_idx, end_idx):
-        print cmip5_rcp_idx[idx][0]
+        print cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1]
         concat_anom_fname = get_concat_anom_sst_output_fname(cmip5_rcp_idx[idx][0], 
                                                              cmip5_rcp_idx[idx][1],
                                                              run_type, ref_start, ref_end,
@@ -408,16 +408,19 @@ def smooth_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
         depart_from_ens_mean = sst_data - ens_mean
         P = 40
         mv = attrs["_FillValue"]
+        print "smoothing ... "
         if monthly:
             smoothed_data = running_gradient_3D_monthly(depart_from_ens_mean, P, mv)
         else:
             smoothed_data = running_gradient_3D(depart_from_ens_mean, P, mv)
+        print " done"
         # save the data
         out_fname = get_concat_anom_sst_smooth_fname(cmip5_rcp_idx[idx][0], 
                                                      cmip5_rcp_idx[idx][1],
                                                      run_type, ref_start, ref_end,
                                                      monthly)
         save_3d_file(out_fname, smoothed_data, lons_var, lats_var, attrs, t_var)
+        print out_fname
 
 #############################################################################
 
@@ -438,7 +441,7 @@ def smooth_concat_sst_anoms_model_means(run_type, ref_start, ref_end, start_idx,
     ens_mean_fh.close()
         
     for idx in range(start_idx, end_idx):
-        print cmip5_rcp_idx[idx][0]
+        print cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1]
         concat_anom_fname = get_concat_anom_sst_output_fname(cmip5_rcp_idx[idx][0], 
                                                              cmip5_rcp_idx[idx][1],
                                                              run_type, ref_start, ref_end)
@@ -449,12 +452,15 @@ def smooth_concat_sst_anoms_model_means(run_type, ref_start, ref_end, start_idx,
         depart_from_ens_mean = sst_data - ens_mean
         P = 40
         mv = attrs["_FillValue"]
+        print "smoothing ... ",
         smoothed_data = running_gradient_3D(depart_from_ens_mean, P, mv)
+        print " done"
         # save the data
         out_fname = get_concat_anom_sst_smooth_model_mean_fname(cmip5_rcp_idx[idx][0], 
                                                      cmip5_rcp_idx[idx][1],
                                                      run_type, ref_start, ref_end)
         save_3d_file(out_fname, smoothed_data, lons_var, lats_var, attrs, t_var)
+        print out_fname
 
 #############################################################################
 
