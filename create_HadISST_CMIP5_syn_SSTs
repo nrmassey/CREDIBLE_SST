@@ -1,0 +1,2 @@
+INT_EOFS=10
+./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $2 -i 2 -v $INT_EOFS -m

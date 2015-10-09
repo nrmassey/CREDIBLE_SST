@@ -62,7 +62,7 @@ def get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, sample, 
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
-    ppath = "../CREDIBLE_output/output/"+out_dir + "/" + intvarstr + "/"
+    ppath = "../CREDIBLE_output/output/"+out_dir + "/" + intvarstr + "/sst/"
     if not os.path.exists(ppath):
         os.mkdir(ppath)
     return ppath + out_name
@@ -551,8 +551,4 @@ if __name__ == "__main__":
         if opt in ['--monthly', '-m']:
             monthly = True
     
-#    if monthly:
-#        create_syn_SSTs_monthly(run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, var_eofs)
-#    else:
-#        create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, var_eofs, monthly)
     create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, var_eofs, monthly)

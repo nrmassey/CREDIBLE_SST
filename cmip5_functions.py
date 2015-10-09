@@ -126,7 +126,17 @@ def load_sst_data(fname, var):
     data = numpy.ma.masked_equal(var[:], mv)
     fh.close()
     return data
-    
+
+#############################################################################
+
+def get_missing_value(fname, var):
+    fh = netcdf_file(fname, 'r')
+    var = fh.variables[var]
+    # mask the missing values
+    mv = var._attributes["_FillValue"]
+    fh.close()
+    return mv
+
 #############################################################################
 
 def get_lons_lats_attrs(in_fname):

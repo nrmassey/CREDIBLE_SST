@@ -1,12 +1,13 @@
 #! /usr/bin/env bash
 
 # create the ensemble means of the top 10 arctic / antarctic SST anomalies
+RCP=$1
 
-SST_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_1986_2005/concat_sst_anoms
-SST_OUT_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_2006_2100/tos
+SST_DIR=/Users/Neil/Coding/CREDIBLE_output/output/$RCP""_1986_2005/concat_sst_anoms
+SST_OUT_DIR=/Users/Neil/Coding/CREDIBLE_output/output/$RCP""_2006_2100/tos
 
-SIC_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_1986_2005/concat_sic_anoms
-SIC_OUT_DIR=/Users/Neil/Coding/CREDIBLE_output/output/rcp45_2006_2100/sic
+SIC_DIR=/Users/Neil/Coding/CREDIBLE_output/output/$RCP""_1986_2005/concat_sic_anoms
+SIC_OUT_DIR=/Users/Neil/Coding/CREDIBLE_output/output/$RCP""_2006_2100/sic
 
 function mean_sst_anoms {
     # arctic top 10 ensemble mean SST
@@ -18,13 +19,19 @@ function mean_sst_anoms {
 
     for e in CESM1-BGC GFDL-CM3 CCSM4 CESM1-CAM5 EC-EARTH MIROC5 ACCESS1-3 CMCC-CMS NorESM1-M ACCESS1-0;
     do
-        SST_FILES=$SST_FILES`echo -selyear,2006/2100 -selvar,tos $SST_DIR"/"*$e*2???_mon.nc`" "
+        IN_FNAME=`echo $SST_DIR"/"*$e*2???_mon.nc`
+        for NAME in $IN_FNAME;
+        do
+            cdo -selyear,2006/2100 -selvar,tos $NAME ${NAME/.nc/_sub.nc}
+        done
     done
 
-    SST_OUT=$SST_OUT_DIR/atlas_tos_Omon_arctic_rcp45_ens_mean_200601-210012_1x1_anoms.nc
-    cdo ensmean $SST_FILES $SST_OUT"_em"
+    SST_OUT=$SST_OUT_DIR/atlas_tos_Omon_arctic_$RCP""_ens_mean_200601-210012_1x1_anoms.nc
+    IN_FILES=`echo $SST_DIR"/"*$e*2???_mon_sub.nc`
+    cdo ensmean $IN_FILES $SST_OUT"_em"
     cdo smooth9 $SST_OUT"_em" $SST_OUT
     rm $SST_OUT"_em"
+    rm $IN_FILES
     echo $SST_OUT
 
     # antarctic top 10 ensemble mean SST
@@ -36,13 +43,19 @@ function mean_sst_anoms {
 
     for e in CMCC-CM NorESM1-M MIROC-ESM GISS-E2-H-CC ACCESS1-0 MRI-CGCM3 EC-EARTH CMCC-CMS MIROC-ESM-CHEM bcc-csm1-1;
     do
-        SST_FILES=$SST_FILES`echo -selyear,2006/2100 -selvar,tos $SST_DIR"/"*$e*2???_mon.nc`" "
+        IN_FNAME=`echo $SST_DIR"/"*$e*2???_mon.nc`
+        for NAME in $IN_FNAME;
+        do
+            cdo -selyear,2006/2100 -selvar,tos $NAME ${NAME/.nc/_sub.nc}
+        done
     done
 
-    SST_OUT=$SST_OUT_DIR/atlas_tos_Omon_antarctic_rcp45_ens_mean_200601-210012_1x1_anoms.nc
-    cdo ensmean $SST_FILES $SST_OUT"_em"
+    SST_OUT=$SST_OUT_DIR/atlas_tos_Omon_antarctic_$RCP""_ens_mean_200601-210012_1x1_anoms.nc
+    IN_FILES=`echo $SST_DIR"/"*$e*2???_mon_sub.nc`
+    cdo ensmean $IN_FILES $SST_OUT"_em"
     cdo smooth9 $SST_OUT"_em" $SST_OUT
     rm $SST_OUT"_em"
+    rm $IN_FILES
     echo $SST_OUT
 }
 
@@ -63,7 +76,7 @@ function mean_sic_anoms {
         rm tmp1.nc
     done
 
-    SIC_OUT=$SIC_OUT_DIR/atlas_sic_OImon_$HEMI""_rcp45_ens_mean_200601-210012_1x1_anoms.nc
+    SIC_OUT=$SIC_OUT_DIR/atlas_sic_OImon_$HEMI""_$RCP""_ens_mean_200601-210012_1x1_anoms.nc
     cdo ensmean $SIC_FILES $SIC_OUT
     echo $SIC_OUT
 
@@ -81,7 +94,8 @@ function mean_sic_anoms {
     #"NorESM1-M", "ACCESS1-0"
 
 HEMI=arctic
-SIC_LIST="CESM1-BGC GFDL-CM3 CCSM4 CESM1-CAM5 EC-EARTH MIROC5 ACCESS1-3 CMCC-CMS NorESM1-M ACCESS1-0"
+#SIC_LIST="CESM1-BGC GFDL-CM3 CCSM4 CESM1-CAM5 EC-EARTH MIROC5 ACCESS1-3 CMCC-CMS NorESM1-M ACCESS1-0"
+SIC_LIST="GFDL-CM3"
 mean_sic_anoms
 
     # antarctic top 10 ensemble mean SST
@@ -91,4 +105,4 @@ mean_sic_anoms
     
 HEMI=antarctic
 SIC_LIST="CMCC-CM NorESM1-M MIROC-ESM GISS-E2-H-CC ACCESS1-0 MRI-CGCM3 EC-EARTH CMCC-CMS MIROC-ESM-CHEM bcc-csm1-1"
-mean_sic_anoms
+#mean_sic_anoms
