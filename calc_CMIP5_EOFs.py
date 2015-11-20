@@ -22,6 +22,7 @@
 #############################################################################
 
 import os, sys, getopt
+sys.path.append("../python_lib/eofs")
 from cmip5_functions import get_cmip5_tos_fname, get_output_directory, save_3d_file, load_data
 from filter_cmip5_members import read_cmip5_index_file, read_cmip5_model_mean_index_file
 from create_CMIP5_sst_anoms import get_concat_anom_sst_smooth_fname, get_start_end_periods, get_concat_anom_sst_smooth_model_mean_fname
@@ -230,7 +231,7 @@ def calc_EOFs(run_type, ref_start, ref_end, eof_year, model_mean=False, monthly=
         ei *= 12
     
     # create the storage
-    ensemble = numpy.ma.zeros([n_ens, ei-si, 180, 360], 'f')
+    ensemble = numpy.zeros([n_ens, ei-si, 180, 360], 'f')
 
     for idx in range(0, n_ens):
         if model_mean:
@@ -254,7 +255,9 @@ def calc_EOFs(run_type, ref_start, ref_end, eof_year, model_mean=False, monthly=
         # get the data and add to the ensemble array
         var = fh.variables["sst"]
         data = var[si:ei]
-        ensemble[idx] = numpy.ma.masked_equal(data, mv)
+        data1 = numpy.ma.masked_outside(data, -100, 100)
+        data2 = numpy.ma.masked_invalid(data1)
+        ensemble[idx] = data2.filled(0)
         fh.close()
     # now we have the option of monthly EOFs - return a list of Eof solvers    
     eof_solvers = []
@@ -373,7 +376,9 @@ def calc_CMIP5_PC_proj(run_type, ref_start, ref_end, eof_year, model_mean=False,
             mv = attrs["_FillValue"]
         # get the data and add to the ensemble array
         var = fh.variables["sst"]
-        sst_data = numpy.ma.masked_equal(var[:], mv)
+        data1 = numpy.ma.masked_outside(var[:], -100, 100)
+        data2 = numpy.ma.masked_invalid(data1)
+        sst_data = data2.filled(0)
         
         # create the output array
         if idx == 0:

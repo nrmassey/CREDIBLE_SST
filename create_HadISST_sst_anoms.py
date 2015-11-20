@@ -21,37 +21,28 @@
 #############################################################################
 
 import os, sys, getopt
+sys.path.append("../python_lib")
 from create_CMIP5_sst_anoms import get_start_end_periods, save_3d_file
 from cmip5_functions import calc_GMSST, load_sst_data
 
 from netcdf_file import *
 import numpy
 from cdo import *
-
-import pyximport
-pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
 from running_gradient_filter import *
-from running_mean import *
-from window_smooth import *
-
-import matplotlib.pyplot as plt
 
 #############################################################################
 
 def get_HadISST_input_filename(run_n):
-    path = "/Users/Neil/ClimateData/HadISST2/HadISST.2.1.0.0_realisation_dec2010_"+str(run_n)+".nc"
-    return path
-
-#############################################################################
-
-def get_HadISST_year_mean_filename(run_n):
-    path = "/Users/Neil/ClimateData/HadISST2/HadISST.2.1.0.0_realisation_dec2010_"+str(run_n)+"_yrmn.nc"
+    hadisst_path = "/soge-home/data_not_backed_up/surface/hadisst_2/1.0x1.0/monthly/nc/"
+    #hadisst_path = "/Users/Neil/ClimateData/HadISST2/"
+    path = hadisst_path+"HadISST.2.1.0.0_realisation_dec2010_"+str(run_n)+".nc"
     return path
 
 #############################################################################
 
 def get_HadISST_output_directory(histo_sy, histo_ey, run_n):
-    out_base_dir = "/Users/Neil/Coding/CREDIBLE_output/output/"
+    #out_base_dir = "/Users/Neil/Coding/CREDIBLE_output/output/"
+    out_base_dir = "/soge-home/staff/coml0118/CREDIBLE_output/output/"
     out_dir = out_base_dir + "HadISST_" + str(histo_sy) + "_" + str(histo_ey) + "_" + str(run_n)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -97,6 +88,13 @@ def get_HadISST_annual_cycle_residuals_fname(histo_sy, histo_ey, ref_start, ref_
 def get_HadISST_reference_fname(histo_sy, histo_ey, ref_start, ref_end, run_n):
     out_dir = get_HadISST_output_directory(histo_sy, histo_ey, run_n)
     out_fname = out_dir+"/hadisst_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+str(ref_start)+"_"+str(ref_end)+"_"+str(run_n)+"_ref.nc"
+    return out_fname
+
+#############################################################################
+
+def get_HadISST_monthly_reference_fname(histo_sy, histo_ey, ref_start, ref_end, run_n):
+    out_dir = get_HadISST_output_directory(histo_sy, histo_ey, run_n)
+    out_fname = out_dir+"/hadisst_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+str(ref_start)+"_"+str(ref_end)+"_"+str(run_n)+"_mon_smooth_ref.nc"
     return out_fname
 
 #############################################################################
@@ -230,66 +228,11 @@ def create_HadISST_reference_SIC(histo_sy, histo_ey, ref_start, ref_end, run_n):
 
 #############################################################################
 
-def plot_HadISST(histo_sy, histo_ey, run_n):
-    smooth_fname  = get_HadISST_smooth_fname(histo_sy, histo_ey, run_n)
-    resids_fname  = get_HadISST_residuals_fname(histo_sy, histo_ey, run_n)
-    hadisst_fname = get_HadISST_input_filename(run_n)
-    
-    fh_smooth = netcdf_file(smooth_fname, 'r')
-    fh_resids = netcdf_file(resids_fname, 'r')
-    
-    smooth_ssts = fh_smooth.variables["sst"][:]
-    resids_ssts = fh_resids.variables["sst"][:]
-    
+def create_HadISST_monthly_smoothed_reference(histo_sy, histo_ey, ref_start, ref_end, run_n):
+    in_fname = get_HadISST_month_smooth_filename(histo_sy, histo_ey, run_n)
+    out_fname = get_HadISST_monthly_reference_fname(histo_sy, histo_ey, ref_start, ref_end, run_n)
     cdo = Cdo()
-    year_mean_file = cdo.yearmean(input=" -selyear,"+str(histo_sy)+"/"+str(histo_ey)+" "+hadisst_fname)
-    fh_hadisst = netcdf_file(year_mean_file, 'r')
-    hadisst_ssts = fh_hadisst.variables["sst"][:]
-    
-    smooth_gmsst  = calc_GMSST(numpy.ma.masked_less(smooth_ssts,0))
-    hadisst_gmsst = calc_GMSST(numpy.ma.masked_less(hadisst_ssts,0))
-    recon_gmsst   = calc_GMSST(numpy.ma.masked_less(smooth_ssts+resids_ssts,0))
-    mv = fh_hadisst.variables["sst"]._attributes["_FillValue"]
-    hadisst_gmsst_3D = numpy.array(hadisst_gmsst.reshape(hadisst_gmsst.shape[0],1,1), 'f')
-    smooth_smooth = running_gradient_3D(hadisst_gmsst_3D, 40, mv).squeeze()
-    
-    sp = plt.subplot(111)
-    sp.plot(smooth_gmsst, 'r', lw=2.0)
-    sp.plot(hadisst_gmsst,'k', lw=1.0)
-    sp.plot(recon_gmsst+1.0,'b', lw=2.0)
-    sp.plot(smooth_smooth+1.0, 'g', lw=2.0)
-    plt.show()
-    
-    fh_smooth.close()
-    fh_resids.close()
-    fh_hadisst.close()
-
-#############################################################################
-
-def plot_HadISST_residuals(histo_sy, histo_ey, ref_start, ref_end, run_n):
-    resids_year_fname = get_HadISST_residuals_fname(histo_sy, histo_ey, run_n)
-    resids_month_fname =  get_HadISST_monthly_residuals_fname(histo_sy, histo_ey, run_n)
-    ac_fname = get_HadISST_annual_cycle_residuals_fname(histo_sy, histo_ey, ref_start, ref_end, run_n)
-    
-    year_resids  = load_sst_data(resids_year_fname, "sst")
-    month_resids = load_sst_data(resids_month_fname, "sst")
-    ac_resids = load_sst_data(ac_fname, "sst")
-    
-    # replicate the annual cycle so we can subtract it from the month_resids
-    n_tiles = month_resids.shape[0] / ac_resids.shape[0]
-    ac_month_resids = numpy.tile(ac_resids, [n_tiles,1,1])
-    ac_removed_month_resids = numpy.ma.masked_less(month_resids,-1000) - numpy.ma.masked_less(ac_month_resids,-1000) 
-    
-    year_gmsst = calc_GMSST(numpy.ma.masked_less(year_resids,-1000))
-    month_gmsst = calc_GMSST(ac_removed_month_resids)
-    
-    t_year = numpy.arange(1899,2011)
-    t_month = numpy.arange(1899,2011,1.0/12)
-    
-    sp = plt.subplot(111)
-    sp.plot(t_year, year_gmsst, 'r', lw=2.0, zorder=1)
-    sp.plot(t_month, month_gmsst, 'g', lw=1.0, zorder=0)
-    plt.show()
+    cdo.ymonmean(input=" -selyear,"+str(ref_start)+"/"+str(ref_end)+" -selvar,sst "+in_fname+" ", output=out_fname)
 
 #############################################################################
 
@@ -313,13 +256,13 @@ if __name__ == "__main__":
     histo_ey = 2010
 
     create_HadISST_reference_SIC(histo_sy, histo_ey, ref_start, ref_end, run_n)
-    sys.exit()
 
-    create_HadISST_reference(histo_sy, histo_ey, ref_start, ref_end, run_n)
-    create_HadISST_smoothed(histo_sy, histo_ey, run_n)
-    create_HadISST_residuals(histo_sy, histo_ey, run_n)
+    # Now that we have switched to being completely monthly based we need 3 files
+    # Firstly, the monthly smoothed file
     create_HadISST_monthly_smoothed(histo_sy, histo_ey, run_n)
+    # Secondly, the residuals, i.e. the monthly HadISST file minus the smoothed monthly file    
     create_HadISST_monthly_residuals(histo_sy, histo_ey, run_n)
-    create_HadISST_annual_cycle_residuals(histo_sy, histo_ey, ref_start, ref_end, run_n)
-#    plot_HadISST(histo_sy, histo_ey, run_n)
-#    plot_HadISST_residuals(histo_sy, histo_ey, ref_start, ref_end, run_n)
+    # Thirdly, the reference file.  This is the climatological monthly mean of the 1986->2005
+    # period, given by ref_start and ref_end
+    create_HadISST_monthly_smoothed_reference(histo_sy, histo_ey, ref_start, ref_end, run_n)
+

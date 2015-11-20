@@ -1,4 +1,4 @@
-#! /usr/bin/env python  
+#! /usr/bin/env python
 #############################################################################
 #
 # Program : create_CMIP5_sst_anoms.py
@@ -21,6 +21,7 @@
 #############################################################################
 
 import os, sys, getopt
+sys.path.append("../python_lib")
 from cmip5_functions import get_cmip5_tos_fname, get_output_directory, get_cmip5_sic_fname
 from filter_cmip5_members import read_cmip5_index_file, read_cmip5_model_mean_index_file
 from cdo import *
@@ -28,8 +29,8 @@ from netcdf_file import *
 import numpy
 
 # uncomment this on local machine
-import pyximport
-pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
+#import pyximport
+#pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
 from running_gradient_filter import *
 
 #############################################################################
@@ -46,9 +47,14 @@ def get_start_end_periods():
     
 #############################################################################
 
+def rand_string():
+    return str(int(numpy.random.uniform(1e8)))
+
+#############################################################################
+
 def create_tmp_ref_field(ref_fname, ref_start, ref_end, var, monthly):
     # calculate the temporary reference file
-    tmp_ref_name = "tmp_ref_sst.nc"
+    tmp_ref_name = rand_string() + "_tmp_ref_sst.nc"
 
     if monthly:
         anom_string = " -ymonmean "
@@ -57,7 +63,6 @@ def create_tmp_ref_field(ref_fname, ref_start, ref_end, var, monthly):
     anom_string += " -selyear," + str(ref_start) + "/" + str(ref_end) +\
                    " -selname,\"" + var + "\" " + ref_fname
     cdo = Cdo()
-    tmp_ref_name = "tmp_ref_sst.nc"
     cdo.addc(0, input=anom_string, output=tmp_ref_name)
     
     return tmp_ref_name
@@ -66,9 +71,12 @@ def create_tmp_ref_field(ref_fname, ref_start, ref_end, var, monthly):
 
 def get_calc_anom_string(tmp_ref_name, tgt_fname, 
                          tgt_start, tgt_end, var, monthly):
-    anom_string = " -setmissval,-1e30 "+\
-                  " -sub " +\
-                  " -selyear," + str(tgt_start) + "/" + str(tgt_end) +\
+    anom_string = " -setmissval,-1e30 "
+    if monthly:
+        anom_string += " -ymonsub "
+    else:
+        anom_string += " -sub "
+    anom_string +=" -selyear," + str(tgt_start) + "/" + str(tgt_end) +\
                   " -selname,\"" + var + "\" " + tgt_fname +\
                   " " + tmp_ref_name + " "
     return anom_string
@@ -91,7 +99,8 @@ def create_remapped_field(fname, tgt_start, tgt_end, var, monthly):
 #############################################################################
 
 def get_concat_output_path(run_type, ref_start, ref_end):
-    out_path = "../CREDIBLE_output/output/"+run_type+"_"+str(ref_start)+"_"+str(ref_end)+"/concat_sst_anoms/"
+    cmip5_out_path = get_output_directory(run_type, ref_start, ref_end)
+    out_path = cmip5_out_path+"/concat_sst_anoms/"
     return out_path
 
 #############################################################################
@@ -134,7 +143,7 @@ def get_concat_anom_sst_smooth_model_mean_fname(idx0, idx1, run_type, ref_start,
 
 def get_concat_anom_sst_ens_mean_fname(run_type, ref_start, ref_end, monthly):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean"
+    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_rcp45_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
@@ -145,7 +154,7 @@ def get_concat_anom_sst_ens_mean_fname(run_type, ref_start, ref_end, monthly):
 
 def get_concat_anom_sst_ens_mean_smooth_fname(run_type, ref_start, ref_end, monthly):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean_smooth"
+    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_rcp45_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean_smooth"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
@@ -299,74 +308,83 @@ def create_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     
     for idx in range(start_idx, end_idx):
-        print cmip5_rcp_idx[idx][0]
-        # get the tos filenames for the rcp and historical simulation
-        sst_rcp_fname = get_cmip5_tos_fname(run_type, cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
-        sst_histo_fname = get_cmip5_tos_fname("historical", cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
-        
-        sic_rcp_fname = get_cmip5_sic_fname(run_type, cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
-        sic_histo_fname = get_cmip5_sic_fname("historical", cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
-        
-        if "HadGEM2-" in cmip5_rcp_idx[idx][0]:
-            rcp_sy -= 1     # met office files run from 2005/12-> for rcp scenarios
-        
-        sst_rcp_remap_string   = create_remapped_field(sst_rcp_fname, rcp_sy, rcp_ey, sst_var_name, monthly)
-        sst_histo_remap_string = create_remapped_field(sst_histo_fname, histo_sy, histo_ey, sst_var_name, monthly)
-        sic_rcp_remap_string   = create_remapped_field(sic_rcp_fname, rcp_sy, rcp_ey, sic_var_name, monthly)
-        sic_histo_remap_string = create_remapped_field(sic_histo_fname, histo_sy, histo_ey, sic_var_name, monthly)
-
-        sst_rcp_remap_temp = cdo.addc(0,input=sst_rcp_remap_string)
-        sst_histo_remap_temp = cdo.addc(0,input=sst_histo_remap_string)
-        sic_rcp_remap_temp = cdo.addc(0,input=sic_rcp_remap_string)
-        sic_histo_remap_temp = cdo.addc(0,input=sic_histo_remap_string)
-        
-        # cat the files together
-        cdo.cat(input=sst_histo_remap_temp + " " + sst_rcp_remap_temp, output="tmp_sst.nc")
-        cdo.cat(input=sic_histo_remap_temp + " " + sic_rcp_remap_temp, output="tmp_sic.nc")
-
-        # fix the file to replace missing value in sst with -1.8 if sic > 0
-        sst_fh = netcdf_file("tmp_sst.nc", 'r')
-        sic_fh = netcdf_file("tmp_sic.nc", 'r')
-        sst_var = sst_fh.variables[sst_var_name]
-        sst_data = numpy.array(sst_var[:])
-        lon_var = sst_fh.variables["lon"]
-        lat_var = sst_fh.variables["lat"]
-        t_var = sst_fh.variables["time"]
-        sic_data = sic_fh.variables[sic_var_name][:]
-        mv = sst_var._attributes["_FillValue"]
-        
-        # replace
-#        for t in range(0, sic_data.shape[0]):
-#            sic_data_idx = numpy.where(sic_data[t] > 1)
-#            sst_data[t][sic_data_idx] = 273.15 - (1.8 * sic_data[t][sic_data_idx] * 0.01)
-        sst_fh.close()
-        sic_fh.close()
-        
-        # save the file
-        save_3d_file("tmp_sst2.nc", sst_data, lon_var, lat_var, sst_var._attributes, t_var, sst_var_name)
-
-        # add the lsm from hadisst
-        lsm_path = "/soge-home/staff/coml0118/LSM/HadISST2_lsm.nc"
-        cdo.add(input=" -smooth9 tmp_sst2.nc " + lsm_path, output="tmp_sst3.nc")
-
-        # calculate the temporary reference file
-        tmp_ref_name = create_tmp_ref_field("tmp_sst3.nc", ref_start, ref_end, sst_var_name, monthly)
-        
-        # calculate the timeseries of anomalies for both the historical
-        # and RCP runs as running decadal means
-        out_path = get_concat_anom_sst_output_fname(cmip5_rcp_idx[idx][0], 
+        try:
+            print cmip5_rcp_idx[idx][0]
+            out_path = get_concat_anom_sst_output_fname(cmip5_rcp_idx[idx][0], 
                                                     cmip5_rcp_idx[idx][1], 
                                                     run_type, ref_start, ref_end,
                                                     monthly)
-        anom_string = get_calc_anom_string(tmp_ref_name,
-                                           "tmp_sst3.nc", histo_sy, rcp_ey, sst_var_name,
-                                           monthly)
-        cdo.addc(0, input=anom_string, output=out_path)
-        os.remove("tmp_sst.nc")
-        os.remove("tmp_sic.nc")
-        os.remove("tmp_sst2.nc")
-        os.remove("tmp_sst3.nc")
-        os.remove("tmp_ref_sst.nc")
+            print out_path
+            # get the tos filenames for the rcp and historical simulation
+            sst_rcp_fname = get_cmip5_tos_fname(run_type, cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
+            sst_histo_fname = get_cmip5_tos_fname("historical", cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
+        
+            sic_rcp_fname = get_cmip5_sic_fname(run_type, cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
+            sic_histo_fname = get_cmip5_sic_fname("historical", cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1])
+
+            if "HadGEM2-" in cmip5_rcp_idx[idx][0]:
+                rcp_sy -= 1     # met office files run from 2005/12-> for rcp scenarios        
+            sst_rcp_remap_string   = create_remapped_field(sst_rcp_fname, rcp_sy, rcp_ey, sst_var_name, monthly)
+            sst_histo_remap_string = create_remapped_field(sst_histo_fname, histo_sy, histo_ey, sst_var_name, monthly)
+            sic_rcp_remap_string   = create_remapped_field(sic_rcp_fname, rcp_sy, rcp_ey, sic_var_name, monthly)
+            sic_histo_remap_string = create_remapped_field(sic_histo_fname, histo_sy, histo_ey, sic_var_name, monthly)
+
+            print "SIC histo:" + sic_histo_fname
+
+            sst_rcp_remap_temp = cdo.addc(0,input=sst_rcp_remap_string)
+            sst_histo_remap_temp = cdo.addc(0,input=sst_histo_remap_string)
+            sic_rcp_remap_temp = cdo.addc(0,input=sic_rcp_remap_string)
+            sic_histo_remap_temp = cdo.addc(0,input=sic_histo_remap_string)
+        
+            # cat the files together
+            tmp_sst_name = rand_string() + "_tmp_sst.nc"
+            tmp_sic_name = rand_string() + "_tmp_sic.nc"
+            cdo.cat(input=sst_histo_remap_temp + " " + sst_rcp_remap_temp, output=tmp_sst_name)
+            cdo.cat(input=sic_histo_remap_temp + " " + sic_rcp_remap_temp, output=tmp_sic_name)
+
+            # fix the file to replace missing value in sst with -1.8 if sic > 0
+            sst_fh = netcdf_file(tmp_sst_name, 'r')
+            sic_fh = netcdf_file(tmp_sic_name, 'r')
+            sst_var = sst_fh.variables[sst_var_name]
+            sst_data = numpy.array(sst_var[:])
+            lon_var = sst_fh.variables["lon"]
+            lat_var = sst_fh.variables["lat"]
+            t_var = sst_fh.variables["time"]
+            sic_data = sic_fh.variables[sic_var_name][:]
+            mv = sst_var._attributes["_FillValue"]
+        
+        # replace
+#            for t in range(0, sic_data.shape[0]):
+#                sic_data_idx = numpy.where(sic_data[t] > 1)
+#                sst_data[t][sic_data_idx] = 273.15 - (1.8 * sic_data[t][sic_data_idx] * 0.01)
+            sst_fh.close()
+            sic_fh.close()
+        
+            # save the file
+            tmp_sst2_name = rand_string() + "_tmp_sst2.nc"
+            tmp_sst3_name = rand_string() + "_tmp_sst3.nc"
+            save_3d_file(tmp_sst2_name, sst_data, lon_var, lat_var, sst_var._attributes, t_var, sst_var_name)
+
+            # add the lsm from hadisst
+            lsm_path = "/soge-home/staff/coml0118/LSM/HadISST2_lsm.nc"
+            cdo.add(input=" -smooth9 "+tmp_sst2_name+ " " +lsm_path, output=tmp_sst3_name)
+
+            # calculate the temporary reference file
+            tmp_ref_name = create_tmp_ref_field(tmp_sst3_name, ref_start, ref_end, sst_var_name, monthly)
+        
+            # calculate the timeseries of anomalies for both the historical
+            # and RCP runs as running decadal means
+            anom_string = get_calc_anom_string(tmp_ref_name,
+                                               tmp_sst3_name, histo_sy, rcp_ey, sst_var_name,
+                                               monthly)
+            cdo.addc(0, input=anom_string, output=out_path)
+            os.remove(tmp_sst_name)
+            os.remove(tmp_sic_name)
+            os.remove(tmp_sst2_name)
+            os.remove(tmp_sst3_name)
+            os.remove(tmp_ref_name)
+        except:
+            pass
 
 #############################################################################
 
@@ -386,7 +404,7 @@ def smooth_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
     # get the filtered set of cmip5 models / runs
     cmip5_rcp_idx = read_cmip5_index_file(run_type, ref_start, ref_end)
     n_ens = len(cmip5_rcp_idx)
-       
+    
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     
     # get the ensemble mean
@@ -394,9 +412,9 @@ def smooth_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
     ens_mean_fh = netcdf_file(ens_mean_fname)
     ens_mean = ens_mean_fh.variables["tos"][:].byteswap().newbyteorder()
     ens_mean_fh.close()
-
+        
     for idx in range(start_idx, end_idx):
-        print cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1]
+        print cmip5_rcp_idx[idx][0]
         concat_anom_fname = get_concat_anom_sst_output_fname(cmip5_rcp_idx[idx][0], 
                                                              cmip5_rcp_idx[idx][1],
                                                              run_type, ref_start, ref_end,
@@ -408,19 +426,16 @@ def smooth_concat_sst_anoms(run_type, ref_start, ref_end, start_idx, end_idx, mo
         depart_from_ens_mean = sst_data - ens_mean
         P = 40
         mv = attrs["_FillValue"]
-        print "smoothing ... "
         if monthly:
             smoothed_data = running_gradient_3D_monthly(depart_from_ens_mean, P, mv)
         else:
             smoothed_data = running_gradient_3D(depart_from_ens_mean, P, mv)
-        print " done"
         # save the data
         out_fname = get_concat_anom_sst_smooth_fname(cmip5_rcp_idx[idx][0], 
                                                      cmip5_rcp_idx[idx][1],
                                                      run_type, ref_start, ref_end,
                                                      monthly)
         save_3d_file(out_fname, smoothed_data, lons_var, lats_var, attrs, t_var)
-        print out_fname
 
 #############################################################################
 
@@ -441,7 +456,7 @@ def smooth_concat_sst_anoms_model_means(run_type, ref_start, ref_end, start_idx,
     ens_mean_fh.close()
         
     for idx in range(start_idx, end_idx):
-        print cmip5_rcp_idx[idx][0], cmip5_rcp_idx[idx][1]
+        print cmip5_rcp_idx[idx][0]
         concat_anom_fname = get_concat_anom_sst_output_fname(cmip5_rcp_idx[idx][0], 
                                                              cmip5_rcp_idx[idx][1],
                                                              run_type, ref_start, ref_end)
@@ -452,15 +467,12 @@ def smooth_concat_sst_anoms_model_means(run_type, ref_start, ref_end, start_idx,
         depart_from_ens_mean = sst_data - ens_mean
         P = 40
         mv = attrs["_FillValue"]
-        print "smoothing ... ",
         smoothed_data = running_gradient_3D(depart_from_ens_mean, P, mv)
-        print " done"
         # save the data
         out_fname = get_concat_anom_sst_smooth_model_mean_fname(cmip5_rcp_idx[idx][0], 
                                                      cmip5_rcp_idx[idx][1],
                                                      run_type, ref_start, ref_end)
         save_3d_file(out_fname, smoothed_data, lons_var, lats_var, attrs, t_var)
-        print out_fname
 
 #############################################################################
 
@@ -469,7 +481,7 @@ if __name__ == "__main__":
     ref_end = -1
     run_type = ""
     start_idx = 0
-    end_idx = 0
+    end_idx = 100
     monthly = False
     opts, args = getopt.getopt(sys.argv[1:], 'r:s:e:i:j:m',
                                ['run_type=', 'ref_start=', 'ref_end=',

@@ -9,7 +9,7 @@
 #############################################################################
 
 import os, sys
-sys.path.append("/soge-home/staff/coml0118/python") # path to python cdo routines
+sys.path.append("/soge-home/staff/coml0118/python_lib") # path to python cdo routines
 from cdo import *
 from scipy.io.netcdf import *
 import numpy
@@ -24,11 +24,11 @@ def get_cmip5_path():
 
 def get_output_directory(run_type, ref_sy, ref_ey, year=None):
     uname = os.uname()
-    if uname[0] == "Darwin":
+    if uname == "Darwin":
         out_dir_base = "/Users/Neil/Coding/CREDIBLE_output/output/"
     elif uname[1] == "ouce-linux-01.ouce.ox.ac.uk" or \
          uname[1] == "ouce-linux-02.ouce.ox.ac.uk":
-        out_dir_base = "/soge-home/staff/coml0118/CREDIBLE_SST/output/"
+        out_dir_base = "/soge-home/staff/coml0118/CREDIBLE_output/output/"
         
     out_dir = out_dir_base + run_type+"_"+str(ref_sy)+"_"+str(ref_ey)
     if not year is None:

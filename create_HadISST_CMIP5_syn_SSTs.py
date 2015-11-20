@@ -382,7 +382,7 @@ def create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly=T
 
 #############################################################################
 
-def create_hadisst_annual_cycle(run_type, ref_start, ref_end, n_repeats, run_n=400):
+def create_hadisst_monthly_reference(run_type, ref_start, ref_end, n_repeats, run_n=400):
     # create the annual cycle from hadisst, repeating it a number of times
     # so as to add it onto the CMIP5 timeseries
     
@@ -390,9 +390,9 @@ def create_hadisst_annual_cycle(run_type, ref_start, ref_end, n_repeats, run_n=4
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     hadisst_ey = 2010
 
-    # load in the annual cycle
-    resid_ac_fname = get_HadISST_annual_cycle_residuals_fname(histo_sy, hadisst_ey, ref_start, ref_end, run_n)
-    resid_ac = load_sst_data(resid_ac_fname, "sst")
+    # load in the monthly smoothed reference
+    mon_smooth_name = get_HadISST_monthly_reference_fname(histo_sy, histo_ey, ref_start, ref_end, run_n)
+    resid_ac = load_sst_data(mon_smooth_name, "sst")
     ac_tile = numpy.tile(resid_ac, [n_repeats,1,1])
     return ac_tile
 
@@ -486,7 +486,7 @@ def create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intva
     # get the cmip5 trend
     cmip5_trend = create_cmip5_long_term_mean_timeseries(run_type, ref_start, ref_end, monthly, run_n)
     # create the sample from the distribution of the CMIP5 SST response to GHG forcing
-    syn_sst_rcp = create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly)
+    #syn_sst_rcp = create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly)
     
     # cmip5 ssts are the sum of the ensemble mean trend and the deviation from the ensemble mean
     # monthly ssts have the hadisst annual cycle added onto them
@@ -494,7 +494,7 @@ def create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intva
     # required
     if monthly:
         n_repeats = syn_sst_rcp.shape[0] / 12       # number of repeats = number of years
-        hadisst_ac = create_hadisst_annual_cycle(run_type, ref_start, ref_end, n_repeats, run_n)
+        hadisst_ac = create_hadisst_monthly_reference(run_type, ref_start, ref_end, n_repeats, run_n)
         cmip5_sst = cmip5_trend + hadisst_ac
     else:
         cmip5_sst = cmip5_trend
@@ -502,16 +502,16 @@ def create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intva
     # adjust the cmip5 data
     cmip5_sst = correct_cmip5_long_term_mean_timeseries(cmip5_sst, monthly, run_n)
     # add the synthetic warming
-    cmip5_sst += syn_sst_rcp
+    #cmip5_sst += syn_sst_rcp
 
     # create the interpolated / composite trend data
     out_data = create_hadisst_cmip5_long_term_timeseries(hadisst_trend, cmip5_sst, monthly)
     # create the synthetic internal variability
-    if monthly:
-        intvar = create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
-    else:
-        intvar = create_yearly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
-    out_data += intvar
+    #if monthly:
+    #    intvar = create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
+    #else:
+    #    intvar = create_yearly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
+    #out_data += intvar
     # save the synthetic ssts
     save_syn_SSTs(out_data, run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, monthly)
 
