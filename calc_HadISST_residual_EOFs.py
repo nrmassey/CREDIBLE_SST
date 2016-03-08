@@ -33,19 +33,6 @@ from netcdf_file import *
 from eofs.standard import Eof
 import matplotlib.pyplot as plt
 
-#############################################################################
-
-def get_HadISST_residual_EOFs_fname(histo_sy, histo_ey, run_n):
-    out_dir = get_HadISST_output_directory(histo_sy, histo_ey, run_n)
-    out_fname = out_dir+"/hadisst_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+str(run_n)+"_residual_EOFs.nc"
-    return out_fname
-
-#############################################################################
-
-def get_HadISST_residual_PCs_fname(histo_sy, histo_ey, run_n):
-    out_dir = get_HadISST_output_directory(histo_sy, histo_ey, run_n)
-    out_fname = out_dir+"/hadisst_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+str(run_n)+"_residual_PCs.nc"
-    return out_fname
 
 #############################################################################
 
@@ -97,7 +84,6 @@ def calc_HadISST_residual_EOFs(histo_sy, histo_ey, run_n):
 def calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, run_n):
     # load the already calculated residuals
     resid_fname = get_HadISST_monthly_residuals_fname(histo_sy, histo_ey, run_n)
-    
     # note that we don't have to subtract the annual cycle any more as the
     # residuals are with respect to a smoothed version of the monthly ssts
     
@@ -117,6 +103,8 @@ def calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, r
     eof_solver = Eof(sst_resids, center=True, weights=wgts)
     pcs = eof_solver.pcs(npcs=None)
     eofs = eof_solver.eofs(neofs=None)
+    varfrac = eof_solver.varianceFraction(neigs=None)
+    print varfrac[0:20], numpy.sum(varfrac[0:20])
     
     # get the output names
     out_eofs_fname = get_HadISST_monthly_residual_EOFs_fname(histo_sy, histo_ey, run_n)
@@ -124,7 +112,8 @@ def calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, r
     
     # save the eofs and pcs
     save_3d_file(out_eofs_fname, eofs, attrs, lats_var, lons_var)
-    save_pcs(out_pcs_fname, pcs, attrs)
+    out_pcs = pcs.reshape([pcs.shape[0],1,pcs.shape[1]])
+    save_pcs(out_pcs_fname, out_pcs, attrs)
     resid_mon_fh.close()
 
 #############################################################################
@@ -169,7 +158,6 @@ def plot_test_residuals(histo_sy, histo_ey, ref_start, ref_end, run_n):
 
 #############################################################################
 
-    
 if __name__ == "__main__":
     ref_start = -1
     ref_end = -1
@@ -187,6 +175,6 @@ if __name__ == "__main__":
 
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     histo_ey = 2010
-    calc_HadISST_residual_EOFs(histo_sy, histo_ey, run_n)
+#    calc_HadISST_residual_EOFs(histo_sy, histo_ey, run_n)
     calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, run_n)
 #    plot_test_residuals(histo_sy, histo_ey, ref_start, ref_end, run_n)

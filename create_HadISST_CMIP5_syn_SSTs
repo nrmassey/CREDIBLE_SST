@@ -1,2 +1,35 @@
-INT_EOFS=10
-./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $2 -i 2 -v $INT_EOFS -m
+INT_EOFS=20
+
+# The new way of calculating these have 20 samples at the 10, 25, 50, 75 and 90th percentiles
+# we want 5 per percentile (to give 25 SST response patterns) spanning the range of response
+# patterns per percentile.
+# so generate at the 0th,  4th,  9th, 14th and 19th sample for the 10th percentile
+#                   20th, 24th, 29th, 34th and 39th sample for the 20th percentile
+#                   40th, 44th, 49th, 54th and 59th sample for the 50th percentile
+#                   60th, 64th, 69th, 74th and 79th sample for the 75th percentile
+#                   80th, 84th, 89th, 94th and 99th sample for the 99th percentile
+
+for a in 0 4 9 14 19;
+do
+./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+done
+
+# for a in 20 24 29 34 39;
+# do
+# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+# done
+# 
+# for a in 40 44 49 54 59;
+# do
+# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+# done
+# 
+# for a in 60 64 69 74 79;
+# do
+# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+# done
+# 
+# for a in 80 84 89 94 99;
+# do
+# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+# done

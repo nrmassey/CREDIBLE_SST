@@ -32,17 +32,34 @@ from running_gradient_filter import *
 
 #############################################################################
 
+def get_uname():
+    uname = os.uname()
+    if uname[0] == "Darwin":
+        out_uname = "Darwin"
+    elif uname[1] == "ouce-linux-01.ouce.ox.ac.uk" or \
+         uname[1] == "ouce-linux-02.ouce.ox.ac.uk":
+        out_uname = "Linux"
+    return out_uname
+
+#############################################################################
+
 def get_HadISST_input_filename(run_n):
-    hadisst_path = "/soge-home/data_not_backed_up/surface/hadisst_2/1.0x1.0/monthly/nc/"
-    #hadisst_path = "/Users/Neil/ClimateData/HadISST2/"
+    uname = get_uname()
+    if uname == "Darwin":
+        hadisst_path = "/Users/Neil/ClimateData/HadISST2/"
+    elif uname == "Linux":
+        hadisst_path = "/soge-home/data_not_backed_up/surface/hadisst_2/1.0x1.0/monthly/nc/"
     path = hadisst_path+"HadISST.2.1.0.0_realisation_dec2010_"+str(run_n)+".nc"
     return path
 
 #############################################################################
 
 def get_HadISST_output_directory(histo_sy, histo_ey, run_n):
-    #out_base_dir = "/Users/Neil/Coding/CREDIBLE_output/output/"
-    out_base_dir = "/soge-home/staff/coml0118/CREDIBLE_output/output/"
+    uname = get_uname()
+    if uname == "Darwin":
+        out_base_dir = "/Users/Neil/Coding/CREDIBLE_output/output/"
+    elif uname == "Linux":
+        out_base_dir = "/soge-home/staff/coml0118/CREDIBLE_output/output/"
     out_dir = out_base_dir + "HadISST_" + str(histo_sy) + "_" + str(histo_ey) + "_" + str(run_n)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)

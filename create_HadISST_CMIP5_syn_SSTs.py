@@ -24,12 +24,13 @@ import os, sys, getopt
 from calc_CMIP5_EOFs import get_cmip5_EOF_filename, get_cmip5_proj_PC_scale_filename
 from create_CMIP5_syn_PCs import get_syn_SST_PCs_filename
 from create_CMIP5_sst_anoms import get_concat_anom_sst_ens_mean_smooth_fname, get_start_end_periods
-from create_HadISST_sst_anoms import get_HadISST_smooth_fname, get_HadISST_reference_fname, get_HadISST_month_smooth_filename
+from create_HadISST_sst_anoms import get_HadISST_smooth_fname, get_HadISST_monthly_reference_fname, get_HadISST_month_smooth_filename, get_HadISST_monthly_residuals_fname
 from cmip5_functions import load_data, reconstruct_field, calc_GMSST, load_sst_data
-from calc_HadISST_residual_EOFs import get_HadISST_residual_PCs_fname, get_HadISST_residual_EOFs_fname, get_HadISST_monthly_residual_EOFs_fname, get_HadISST_monthly_residual_PCs_fname, get_HadISST_annual_cycle_residuals_fname
+from calc_HadISST_residual_EOFs import get_HadISST_monthly_residual_EOFs_fname, get_HadISST_monthly_residual_PCs_fname
 import numpy
 from netcdf_file import *
 from ARN import ARN
+from eofs.standard import Eof
 import pyximport
 pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
 from zonal_smoother import *
@@ -42,13 +43,13 @@ def get_output_directory(run_type, ref_start, ref_end, eof_year):
               run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+\
               "_r"+str(ref_start)+"_"+str(ref_end)+\
               "_y"+str(eof_year)
-    if not os.path.exists("../CREDIBLE_output/output/"+out_dir):
-        os.mkdir("../CREDIBLE_output/output/"+out_dir)
+    if not os.path.exists("/Users/Neil/Coding/CREDIBLE_output/output/"+out_dir):
+        os.mkdir("/Users/Neil/Coding/CREDIBLE_output/output/"+out_dir)
     return out_dir
 
 #############################################################################
 
-def get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, monthly):
+def get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, percentile, intvarmode, monthly):
      # build the filename for the synthetic SSTs
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     if intvarmode == 0:
@@ -58,51 +59,17 @@ def get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, sample, 
     elif intvarmode == 2:
         intvarstr = "varmon"
     out_dir = get_output_directory(run_type, ref_start, ref_end, eof_year)
-    out_name = out_dir + "_f"+str(eof_year)+"_n"+str(neofs)+"_a"+str(sample)+"_"+intvarstr+"_ssts"
+    out_name = out_dir + "_n"+str(neofs)+"_a"+str(percentile)+"_"+intvarstr+"_ssts"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
-    ppath = "../CREDIBLE_output/output/"+out_dir + "/" + intvarstr + "/sst/"
+    ppath = "/Users/Neil/Coding/CREDIBLE_output/output/" + out_dir + "/" + intvarstr
     if not os.path.exists(ppath):
         os.mkdir(ppath)
-    return ppath + out_name
-
-#############################################################################
-
-def create_yearly_intvar(run_type, ref_start, ref_end, n_pcs=20, run_n=400):
-    # load in the PCs and EOFs
-    histo_sy = 1899
-    histo_ey = 2010
-    
-    yearly_pc_fname = get_HadISST_residual_PCs_fname(histo_sy, histo_ey, run_n)
-    yearly_pcs = load_data(yearly_pc_fname)
-    
-    yearly_eof_fname = get_HadISST_residual_EOFs_fname(histo_sy, histo_ey, run_n)
-    yearly_eofs = load_sst_data(yearly_eof_fname, "sst")
-    
-    # get the number of years to predict the PCs for and create the
-    # storage
-    histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    n_yrs = rcp_ey - histo_sy
-    predicted_pcs = numpy.zeros([n_yrs+1, n_pcs], yearly_pcs.dtype)
-    
-    # fit an AR process to the first ~20 pcs
-    for pc in range(0, n_pcs):
-        # create the model
-        arn = ARN(yearly_pcs[:,pc])
-        # fit the model to the data
-        res = arn.fit()
-        arp = res.k_ar
-        # create a timeseries of predicted values
-        predicted_pcs[:,pc] = arn.predict(res.params, noise='all', dynamic=True, start=arp, end=n_yrs+arp)
-        
-    # reconstruct the field and return
-    # weights for reconstruction
-    coslat = numpy.cos(numpy.deg2rad(numpy.arange(89.5, -90.5, -1)).clip(0., 1.))
-    wgts = numpy.sqrt(coslat)[..., numpy.newaxis]
-    # reconstruct field
-    yearly_intvar = reconstruct_field(predicted_pcs, yearly_eofs[:n_pcs], n_pcs, wgts)
-    return yearly_intvar
+    spath = ppath + "/sst/"
+    if not os.path.exists(spath):
+        os.mkdir(spath)
+    return spath + out_name
 
 #############################################################################
 
@@ -111,35 +78,45 @@ def create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=20, run_n=400):
     histo_sy = 1899
     histo_ey = 2010
     
-    monthly_pc_fname = get_HadISST_monthly_residual_PCs_fname(histo_sy, histo_ey, run_n)
-    monthly_pcs = load_data(monthly_pc_fname)
+#    monthly_pc_fname = get_HadISST_monthly_residual_PCs_fname(histo_sy, histo_ey, run_n)
+#    monthly_pcs = load_data(monthly_pc_fname)
+#    monthly_eof_fname = get_HadISST_monthly_residual_EOFs_fname(histo_sy, histo_ey, run_n)
+#    monthly_eofs = load_sst_data(monthly_eof_fname, "sst")
+
+    monthly_residuals_fname = get_HadISST_monthly_residuals_fname(histo_sy, histo_ey, run_n)
+    # open netcdf_file
+    fh = netcdf_file(monthly_residuals_fname, 'r')
+    attrs = fh.variables["sst"]._attributes
+    mv = attrs["_FillValue"]
+    var = fh.variables["sst"]
+    monthly_residuals = numpy.ma.masked_equal(var[:], mv)
+
+    # weights for reconstruction / projection
+    coslat = numpy.cos(numpy.deg2rad(numpy.arange(89.5, -90.5, -1)).clip(0., 1.))
+    wgts = numpy.sqrt(coslat)[..., numpy.newaxis]
+    eof_solver = Eof(monthly_residuals, center=False, weights=wgts)
+    monthly_pcs = eof_solver.pcs(npcs=n_pcs)
+    monthly_eofs = eof_solver.eofs(neofs=n_pcs)
     
-    monthly_eof_fname = get_HadISST_monthly_residual_EOFs_fname(histo_sy, histo_ey, run_n)
-    monthly_eofs = load_sst_data(monthly_eof_fname, "sst")
-    
-    # load in the annual cycle
-    resid_ac_fname = get_HadISST_annual_cycle_residuals_fname(histo_sy, histo_ey, ref_start, ref_end, run_n)
-    resid_ac = load_sst_data(resid_ac_fname, "sst")
+    # get the explanation of variance and calculate the scalar from it
+    M = 1.0 / numpy.sum(eof_solver.varianceFraction(neigs=n_pcs))
     
     # get the number of months to predict the PCs for and create the storage
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     n_mnths = 12*(rcp_ey - histo_sy)
-    predicted_pcs = numpy.zeros([n_mnths+12, n_pcs], monthly_pcs.dtype)
+    predicted_pcs = numpy.zeros([n_mnths+12, n_pcs], "f")
 
     # fit an AR process to the first ~20 pcs
     for pc in range(0, n_pcs):
         # create the model
-        arn = ARN(monthly_pcs[:,pc])
+        arn = ARN(monthly_pcs[:,pc].squeeze())
         # fit the model to the data
         res = arn.fit()
         arp = res.k_ar
         # create a timeseries of predicted values
-        predicted_pcs[:,pc] = arn.predict(res.params, noise='all', dynamic=True, start=arp, end=n_mnths+arp+11)
+        predicted_pcs[:,pc] = M*arn.predict(res.params, noise='all', dynamic=True, start=arp, end=n_mnths+arp+11)
 
     # reconstruct the field and return
-    # weights for reconstruction
-    coslat = numpy.cos(numpy.deg2rad(numpy.arange(89.5, -90.5, -1)).clip(0., 1.))
-    wgts = numpy.sqrt(coslat)[..., numpy.newaxis]
     # reconstruct the field
     monthly_intvar = reconstruct_field(predicted_pcs, monthly_eofs[:n_pcs], n_pcs, wgts)
     return monthly_intvar
@@ -274,7 +251,7 @@ def correct_cmip5_long_term_mean_timeseries(cmip5_ts, monthly=True, run_n=400):
     # difference between the 5 year mean of HadISST and the 5 year mean of the CMIP5 ensemble 
     # mean for 2006->2010 (the overlap period) from the CMIP5 ensemble mean
     # need to load in the hadisst values to enable the correction
-   # get the dates
+    # get the dates
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     hadisst_ey = 2010
     
@@ -330,18 +307,14 @@ def create_cmip5_long_term_mean_timeseries(run_type, ref_start, ref_end, monthly
     if run_type == "likely":
         cmip5_ens_mean_anoms = fit_mean_to_likely(cmip5_ens_mean_anoms, monthly)
 
-    # load the HadISST reference pattern
-    hadisst_ref_fname = get_HadISST_reference_fname(histo_sy, hadisst_ey, ref_start, ref_end, run_n)
-    hadisst_ref_sst = load_sst_data(hadisst_ref_fname, "sst")
-
     # add it onto the ensemble mean anomalies
-    cmip5_ens_mean = cmip5_ens_mean_anoms + hadisst_ref_sst
+    cmip5_ens_mean = cmip5_ens_mean_anoms
 
     return cmip5_ens_mean
 
 #############################################################################
 
-def create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly=True):
+def create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, percentile, monthly=True):
     # create the time series of anomalies from the mean of the various 
     # samples in the CMIP5 ensemble
     # This spans the uncertainty of the GMT response to GHG forcing in CMIP5 
@@ -357,7 +330,8 @@ def create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly=T
     
     # load the principle components for the eof_year
     syn_pc_fname  = get_syn_SST_PCs_filename(load_run_type, ref_start, ref_end, eof_year, monthly=monthly)
-    syn_pc = load_data(syn_pc_fname, "sst")
+    syn_pc_fname_new = syn_pc_fname[:-3] + "_new.nc"
+    syn_pc = load_data(syn_pc_fname_new, "sst")
     
     # load the timeseries of scalings and offsets to the pcs over the CMIP5 period
     proj_pc_scale_fname = get_cmip5_proj_PC_scale_filename(load_run_type, ref_start, ref_end, eof_year, monthly=monthly)
@@ -373,10 +347,10 @@ def create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly=T
     if monthly:
         syn_sst_rcp = numpy.ma.zeros([proj_pc_scale.shape[0], eofs.shape[2], eofs.shape[3]], 'f')
         for m in range(0, 12):
-            pc_ts = syn_pc[m,sample,:neofs] * proj_pc_scale[m::12,:neofs] + proj_pc_offset[m::12,:neofs]
+            pc_ts = syn_pc[m,percentile,:neofs] * proj_pc_scale[m::12,:neofs] + proj_pc_offset[m::12,:neofs]
             syn_sst_rcp[m::12] = reconstruct_field(pc_ts, eofs[m], neofs, wgts)
     else:
-        pc_ts = syn_pc[0,sample,:neofs] * proj_pc_scale[:,:neofs] + proj_pc_offset[:,:neofs]
+        pc_ts = syn_pc[0,percentile,:neofs] * proj_pc_scale[:,:neofs] + proj_pc_offset[:,:neofs]
         syn_sst_rcp = reconstruct_field(pc_ts, eofs[0], neofs, wgts)
     return syn_sst_rcp
 
@@ -391,10 +365,10 @@ def create_hadisst_monthly_reference(run_type, ref_start, ref_end, n_repeats, ru
     hadisst_ey = 2010
 
     # load in the monthly smoothed reference
-    mon_smooth_name = get_HadISST_monthly_reference_fname(histo_sy, histo_ey, ref_start, ref_end, run_n)
-    resid_ac = load_sst_data(mon_smooth_name, "sst")
-    ac_tile = numpy.tile(resid_ac, [n_repeats,1,1])
-    return ac_tile
+    mon_smooth_name = get_HadISST_monthly_reference_fname(histo_sy, hadisst_ey, ref_start, ref_end, run_n)
+    mon_smooth_ref = load_sst_data(mon_smooth_name, "sst")
+    mon_smooth_ref_tile = numpy.tile(mon_smooth_ref, [n_repeats,1,1])
+    return mon_smooth_ref_tile
 
 #############################################################################
 
@@ -460,14 +434,14 @@ def save_syn_SSTs(out_data, run_type, ref_start, ref_end, neofs, eof_year, sampl
     # fix the lsm
     for t in range(1, out_data.shape[0]):
         out_data.data[t][out_data.data[0] == mv] = mv
-    
-    # smooth the data
-    lat_data = lat_var[:].byteswap().newbyteorder().astype(numpy.float32)
 
-    out_data = zonal_smoother(out_data, lat_data, 64, 90, mv)
+    # get the output name - manipulate the sample
+    ptiles = [0.10, 0.25, 0.50, 0.75, 0.90]
 
-    # get the output name
-    out_name = get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, monthly)
+    out_ptile = int(ptiles[sample/20] * 100)
+    out_sample = sample % 20 # 20 samples per percentile
+    out_name = get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, out_ptile, intvarmode, monthly)
+    out_name = out_name[:-3] + "_s" + str(out_sample) + ".nc"
 
     save_3d_file(out_name, out_data, lon_var, lat_var, attrs, t_var[:], t_var._attributes)
     fh.close()
@@ -486,14 +460,14 @@ def create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intva
     # get the cmip5 trend
     cmip5_trend = create_cmip5_long_term_mean_timeseries(run_type, ref_start, ref_end, monthly, run_n)
     # create the sample from the distribution of the CMIP5 SST response to GHG forcing
-    #syn_sst_rcp = create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, monthly)
+    syn_sst_rcp = create_cmip5_rcp_anomalies(run_type, ref_start, ref_end, eof_year, sample, monthly)
     
     # cmip5 ssts are the sum of the ensemble mean trend and the deviation from the ensemble mean
     # monthly ssts have the hadisst annual cycle added onto them
     # create the hadisst annual cycle to add to the cmip5 projected SSTs, if monthly data is
     # required
     if monthly:
-        n_repeats = syn_sst_rcp.shape[0] / 12       # number of repeats = number of years
+        n_repeats = cmip5_trend.shape[0] / 12       # number of repeats = number of years
         hadisst_ac = create_hadisst_monthly_reference(run_type, ref_start, ref_end, n_repeats, run_n)
         cmip5_sst = cmip5_trend + hadisst_ac
     else:
@@ -502,33 +476,39 @@ def create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intva
     # adjust the cmip5 data
     cmip5_sst = correct_cmip5_long_term_mean_timeseries(cmip5_sst, monthly, run_n)
     # add the synthetic warming
-    #cmip5_sst += syn_sst_rcp
+    cmip5_sst += syn_sst_rcp
 
     # create the interpolated / composite trend data
     out_data = create_hadisst_cmip5_long_term_timeseries(hadisst_trend, cmip5_sst, monthly)
+
+    # need these for smoothing the data
+    ens_mean_fname = get_concat_anom_sst_ens_mean_smooth_fname(run_type, ref_start, ref_end, monthly=monthly)
+    fh2 = netcdf_file(ens_mean_fname, 'r')
+    lat_var = fh2.variables["latitude"]
+    attrs = fh2.variables["sst"]._attributes
+    mv = attrs["_FillValue"]
+
+    # smooth the data
+    lat_data = lat_var[:].byteswap().newbyteorder().astype(numpy.float32)
+    out_data = zonal_smoother(out_data, lat_data, 64, 90, mv)
+    fh2.close()
+    
     # create the synthetic internal variability
-    #if monthly:
-    #    intvar = create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
-    #else:
-    #    intvar = create_yearly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
-    #out_data += intvar
+    if monthly:
+        intvar = create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=var_eofs, run_n=run_n)
+    out_data += intvar.astype(numpy.float32)
     # save the synthetic ssts
     save_syn_SSTs(out_data, run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, monthly)
 
 #############################################################################
 
 if __name__ == "__main__":
-    ref_start = -1
-    ref_end = -1
-    run_type = ""       # run type can be rcp45, rcp85, rcp26 or likely -
-                        # fits ensemble mean to AR5 ch11 likely scenario for 2016->2035
-    neofs = 0
-    eof_year = 2050
-    sample = 100
+    # defaults arguments only
     intvarmode = 0      # internal variability mode - 0 = none, 1 = yearly, 2 = monthly
     monthly = False     # use the monthly EOFs / PCs ?
     opts, args = getopt.getopt(sys.argv[1:], 'r:s:e:n:f:a:i:v:m',
-                               ['run_type=', 'ref_start=', 'ref_end=', 'neofs=', 'eof_year=', 'sample=', 'intvarmode=',
+                               ['run_type=', 'ref_start=', 'ref_end=', 'neofs=', 'eof_year=', 
+                                'sample=', 'intvarmode=',
                                 'varneofs=', 'monthly'])
 
     for opt, val in opts:
@@ -550,5 +530,4 @@ if __name__ == "__main__":
             var_eofs = int(val)
         if opt in ['--monthly', '-m']:
             monthly = True
-    
     create_syn_SSTs(run_type, ref_start, ref_end, neofs, eof_year, sample, intvarmode, var_eofs, monthly)

@@ -29,8 +29,8 @@ from netcdf_file import *
 import numpy
 
 # uncomment this on local machine
-#import pyximport
-#pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
+import pyximport
+pyximport.install(setup_args={'include_dirs':[numpy.get_include()]})
 from running_gradient_filter import *
 
 #############################################################################

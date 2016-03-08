@@ -24,7 +24,7 @@ def get_cmip5_path():
 
 def get_output_directory(run_type, ref_sy, ref_ey, year=None):
     uname = os.uname()
-    if uname == "Darwin":
+    if uname[0] == "Darwin":
         out_dir_base = "/Users/Neil/Coding/CREDIBLE_output/output/"
     elif uname[1] == "ouce-linux-01.ouce.ox.ac.uk" or \
          uname[1] == "ouce-linux-02.ouce.ox.ac.uk":
@@ -167,8 +167,14 @@ def reconstruct_field(pcs, EOFs, neofs, wgts=None):
 
 #############################################################################
 
-def calc_GMSST(field):
-    wts = numpy.cos(numpy.deg2rad(numpy.arange(89.5,-90.5,-1)))
+def calc_GMSST(field, hemi=0):
+    if hemi==0:
+        wts = numpy.cos(numpy.deg2rad(numpy.arange(89.5,-90.5,-1)))
+    elif hemi==1:
+        wts = numpy.cos(numpy.deg2rad(numpy.arange(89.5,-0.5,-1)))
+    elif hemi==2:
+        wts = numpy.cos(numpy.deg2rad(numpy.arange(-0.5,-90.5,-1)))
+    
     GMSST = numpy.ma.average(numpy.ma.mean(field, axis=2),axis=1,weights=wts)
     return GMSST
 

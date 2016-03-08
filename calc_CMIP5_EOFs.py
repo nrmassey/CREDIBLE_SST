@@ -259,6 +259,7 @@ def calc_EOFs(run_type, ref_start, ref_end, eof_year, model_mean=False, monthly=
         data2 = numpy.ma.masked_invalid(data1)
         ensemble[idx] = data2.filled(0)
         fh.close()
+    
     # now we have the option of monthly EOFs - return a list of Eof solvers    
     eof_solvers = []
     if monthly:

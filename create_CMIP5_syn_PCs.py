@@ -125,6 +125,7 @@ def generate_large_sample_of_SSTs(pc_mvdc, eof_data, ens_mean, neofs):
     syn_PCs = generate_synthetic_pcs(pc_mvdc, n_big_sample)
     # reconstruct the field
     for spc in range(0, n_big_sample):
+#    for spc in range(0, 100):
         this_syn_PCs = syn_PCs[spc] # just one set of PCs
         this_syn_PCs = this_syn_PCs.reshape([1, this_syn_PCs.shape[0]])
         recon_SST = reconstruct_field(this_syn_PCs, eof_data, neofs)
@@ -136,7 +137,7 @@ def generate_large_sample_of_SSTs(pc_mvdc, eof_data, ens_mean, neofs):
 
 #############################################################################
 
-def sample_SSTs(sst_means_and_PCs, neofs, nsamps):
+def sample_SSTs(sst_means_and_PCs, neofs, nsamps, ptiles):
     # now we have a large distribution of SST warmings, choose a number (=nsamps)
     # so that the distribution is equally sampled
     sst_means_and_PCs = sst_means_and_PCs[sst_means_and_PCs[:,0].argsort()]
@@ -148,10 +149,16 @@ def sample_SSTs(sst_means_and_PCs, neofs, nsamps):
     # sample strategy zero ensures that values are taken evenly across the
     # percentiles of the skew normal distribution
     # get the percentile values
-    pts = numpy.arange(1.0/(nsamps+1),1.0,1.0/(nsamps+1))
-    pt_vals = snpdf.ppf(pts)
+#    pts = numpy.arange(1.0/(nsamps+1),1.0,1.0/(nsamps+1))
 
-    # pick one member from a number which could satisfy being at a particular
+    # new sampling strategy - sample @ 10,25,50,75,90th percentiles but have
+    # 20 samples per percentile to enable multiple response patterns per percentile
+    # to be sampled
+    pts = numpy.zeros([nsamps], 'f')
+    pts_per_pc = int(nsamps/len(ptiles))
+    pt_vals = snpdf.ppf(ptiles)
+
+    # pick nsamps / len(ptiles) members from those which could satisfy being at a particular
     # percentile value
     for ptp in range(0, pt_vals.shape[0]):
         # get where the GMSSTs bookend the percentile values
@@ -161,8 +168,9 @@ def sample_SSTs(sst_means_and_PCs, neofs, nsamps):
         else:
             I1 = I1[0][0]
         # assign these PCAs to the selected PCAs
-        select_PCs[ptp,:] = sst_means_and_PCs[I1][1:]
-        
+        for i in range(0, pts_per_pc):
+            if I1+i < sst_means_and_PCs.shape[0]:
+                select_PCs[ptp*pts_per_pc+i,:] = sst_means_and_PCs[I1+i][1:]
     return select_PCs
     
 #############################################################################
@@ -185,24 +193,45 @@ def create_syn_SST_PCs(run_type, ref_start, ref_end, eof_year, neofs, nsamps, mo
     pcs = pcs.byteswap().newbyteorder()
     # create the return storage
     select_PCs = numpy.zeros([pcs.shape[0], nsamps, neofs], 'f')
+    # percentile ranges
+    ptiles = [0.10, 0.25, 0.50, 0.75, 0.90]
+    select_PCs = numpy.random.random(select_PCs.shape)
+
     # now loop through each month pcs - if yearly mean then there will only be one
     for m in range(0, pcs.shape[0]):
-        # fit a copula to the principle components
-        pc_mvdc = fit_mvdc(pcs[m], neofs)
-
-        # generate a large sample of GMSSTs and their corresponding PCs    
-        sst_means_and_PCs = generate_large_sample_of_SSTs(pc_mvdc, eofs[m], ens_mean, neofs)
+         # fit a copula to the principle components
+         pc_mvdc = fit_mvdc(pcs[m], neofs)
+ 
+         # generate a large sample of GMSSTs and their corresponding PCs    
+         sst_means_and_PCs = generate_large_sample_of_SSTs(pc_mvdc, eofs[m], ens_mean, neofs)
+     
+         # now sample the distribution to get nsamps number of PCs which
+         # represent the distribution of GMSSTs
+         select_PCs[m] = sample_SSTs(sst_means_and_PCs, neofs, nsamps, ptiles)
     
-        # now sample the distribution to get nsamps number of PCs which
-        # represent the distribution of GMSSTs
-        select_PCs[m] = sample_SSTs(sst_means_and_PCs, neofs, nsamps)
+    # sort the pcs based on the first pc for each of the percentiles
+    sorted_select_PCs = numpy.zeros([pcs.shape[0], nsamps, neofs], 'f')
+    pts_per_pc = int(nsamps/len(ptiles))
+    for m in range(0, pcs.shape[0]):
+        for p in range(0, len(ptiles)):
+            s = p*pts_per_pc
+            e = (p+1)*pts_per_pc
+            # get the first pc for this ptile
+            pc0 = select_PCs[m,s:e,0]
+            # sort it and get the indices
+            pc0_sort = numpy.argsort(pc0)
+            # sort all the pcs so that the corresponding pc0 is ascending
+            for f in range(0, neofs):
+                pc1 = select_PCs[m,s:e,f]
+                sorted_select_PCs[m,s:e,f] = pc1[pc0_sort]
     
     # save
     out_fname = get_syn_SST_PCs_filename(run_type, ref_start, ref_end, eof_year, monthly)
+    out_fname = out_fname[:-3] + "_new.nc"
     # fix the missing value meta data
     out_attrs = {"missing_value" : 2e20}
     # save the selected PCAs
-    save_pcs(out_fname, select_PCs, out_attrs)
+    save_pcs(out_fname, sorted_select_PCs, out_attrs)
     print out_fname
 
 #############################################################################

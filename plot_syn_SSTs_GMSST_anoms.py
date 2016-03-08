@@ -59,7 +59,7 @@ if __name__ == "__main__":
     eof_year = -1
     monthly = False
     hemi=2
-    opts, args = getopt.getopt(sys.argv[1:], 'r:s:e:f:h"m',
+    opts, args = getopt.getopt(sys.argv[1:], 'r:s:e:f:h:m',
                                ['run_type=', 'ref_start=', 'ref_end=',
                                 'eof_year=', 'monthly', 'hemi='])
 
