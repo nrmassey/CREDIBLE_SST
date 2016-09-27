@@ -14,22 +14,22 @@ do
 ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
 done
 
-# for a in 20 24 29 34 39;
-# do
-# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
-# done
-# 
-# for a in 40 44 49 54 59;
-# do
-# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
-# done
-# 
-# for a in 60 64 69 74 79;
-# do
-# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
-# done
-# 
-# for a in 80 84 89 94 99;
-# do
-# ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
-# done
+for a in 20 24 29 34 39;
+do
+ ./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+done
+ 
+for a in 40 44 49 54 59;
+do
+./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+done
+
+for a in 60 64 69 74 79;
+do
+./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+done
+
+for a in 80 84 89 94 99;
+do
+./create_HadISST_CMIP5_syn_SSTs.py -r $1 -s 1986 -e 2005 -n 6 -f 2050 -a $a -i 2 -v $INT_EOFS -m
+done

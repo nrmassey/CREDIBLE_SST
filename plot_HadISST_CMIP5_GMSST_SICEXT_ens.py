@@ -18,12 +18,12 @@ import sys,os,getopt
 sys.path.append("/Users/Neil/Coding/python_lib")
 sys.path.append("../CREDIBLE_SIC/")
 from create_HadISST_CMIP5_syn_SSTs import get_syn_sst_filename
-from create_HadISST_CMIP5_syn_SIC import get_syn_sic_filename
+#from create_HadISST_CMIP5_syn_SIC import get_syn_sic_filename
 from cmip5_functions import load_data, load_sst_data, reconstruct_field, calc_GMSST
 from calc_sea_ice_extent import *
 import numpy
 import matplotlib.pyplot as plt
-from netcdf_file import *
+from scipy.io.netcdf import *
 from py_running_gradient_filter import *
 from create_HadISST_sst_anoms import get_HadISST_input_filename
 import matplotlib.gridspec as gridspec
@@ -33,7 +33,6 @@ import matplotlib.gridspec as gridspec
 neofs=6
 eof_year=2050
 ivm=2
-samples = numpy.arange(10,100,10, 'f')
 
 #############################################################################
 
@@ -62,45 +61,63 @@ def calc_syn_GMSST_TS(run_type, ref_start, ref_end, monthly=True):
     if not os.path.exists(out_name):
         # get the synthetic SST filename
         #
-        ens_ts = numpy.zeros([2, samples.shape[0], dates.shape[0]], 'f')
-        for a in samples:
-            syn_sst_fname = get_syn_sst_filename(run_type,ref_start,ref_end,neofs,eof_year,int(a),ivm,monthly)
-            sst_data = load_sst_data(syn_sst_fname, "sst")
-            gmsst_nh = calc_GMSST(sst_data[:,:90,:],1)
-            gmsst_sh = calc_GMSST(sst_data[:,90:,:],2)
-            ens_ts[0,(a-samples[0])/10] = gmsst_nh
-            ens_ts[1,(a-samples[0])/10] = gmsst_sh
+        ptiles = numpy.array([10,25,50,75,90], 'f')
+        samples = numpy.array([0,4,9,14,19], 'f')
+        samples_2 = numpy.arange(0, len(ptiles)*len(samples), dtype='i')
+        print len(samples_2), samples_2.dtype
+        ens_ts = numpy.zeros([2, len(ptiles)*len(samples), dates.shape[0]], 'f')
+        c = 0
+        for ptile in ptiles:
+            for a in samples:
+                syn_sst_fname = get_syn_sst_filename(run_type,ref_start,ref_end,neofs,eof_year,int(ptile),ivm,monthly)
+                syn_sst_fname = syn_sst_fname[:-3] + "_s" + str(int(a)) + ".nc"
+                sst_data = load_sst_data(syn_sst_fname, "sst")
+                gmsst_nh = calc_GMSST(sst_data[:,:90,:],1)
+                gmsst_sh = calc_GMSST(sst_data[:,90:,:],2)
+                ens_ts[0,c] = gmsst_nh
+                ens_ts[1,c] = gmsst_sh
+                c += 1
         # save the timeseries
-        save_ens_ts_file(out_name, ens_ts, samples, dates, "gmsst")
+        save_ens_ts_file(out_name, ens_ts, samples_2, dates, "gmsst")
     else:
         ens_ts = load_data(out_name, "gmsst")
     
-    return ens_ts.squeeze(), dates
+    return ens_ts, dates
 
 #############################################################################
 
 def calc_syn_SICEXT_TS(run_type, ref_start, ref_end, monthly=True):
     out_name = "./" + run_type + "_sicext_ts.nc"
-    dates = numpy.array([1899 + float(x)/12 for x in range(0, 2412)], 'f')
+    dates = numpy.array([1899 + float(x)/12 for x in range(0, 2424)], 'f')
     lats = numpy.array([90-x for x in range(0,180)], 'f')
     d_lon = 1.0
     mv = -1e30
     if not os.path.exists(out_name):
+        ptiles = numpy.array([10,25,50,75,90], 'f')
+        samples = numpy.array([0,4,9,14,19], 'f')
+        samples_2 = numpy.arange(0, len(ptiles)*len(samples), dtype='i')
+        print len(samples_2), samples_2.dtype
+        ens_ts = numpy.zeros([2, len(ptiles)*len(samples), dates.shape[0]], 'f')
         # get the synthetic SIC filename
         #
-        ens_ts = numpy.zeros([2, samples.shape[0], dates.shape[0]], 'f')
-        for a in samples:
-            syn_sic_fname = get_syn_sic_filename(run_type,ref_start,ref_end,neofs,eof_year,int(a),ivm,monthly)
-            sic_data = load_sst_data(syn_sic_fname, "sic")
-            sic_ext_nh, sic_ext_sh = calc_sea_ice_extent(sic_data, lats, d_lon, mv)
-            ens_ts[0,(a-samples[0])/10] = sic_ext_nh
-            ens_ts[1,(a-samples[0])/10] = sic_ext_sh
+        c = 0
+        for ptile in ptiles:
+            for a in samples:
+                syn_sst_fname = get_syn_sst_filename(run_type,ref_start,ref_end,neofs,eof_year,int(ptile),ivm,monthly)
+                syn_sst_fname = syn_sst_fname[:-3] + "_s" + str(int(a)) + ".nc"
+                syn_sic_fname = syn_sst_fname.replace("ssts", "sic").replace("sst", "sic")
+                sic_data = load_sst_data(syn_sic_fname, "sic")
+                sic_ext_nh, sic_ext_sh = calc_sea_ice_extent(sic_data, lats, d_lon, mv)
+                print sic_ext_nh.shape, ens_ts.shape
+                ens_ts[0,c] = sic_ext_nh
+                ens_ts[1,c] = sic_ext_sh
+                c += 1
         # save the timeseries
-        save_ens_ts_file(out_name, ens_ts, samples, dates, "sic")
+        save_ens_ts_file(out_name, ens_ts, samples_2, dates, "sic")
     else:
-        ens_ts = load_data(out_name, "sic")
+        ens_ts = load_data(out_name, "sic")*1.11
     
-    return ens_ts.squeeze(), dates
+    return ens_ts, dates
 
 #############################################################################
 
@@ -146,10 +163,11 @@ if __name__ == "__main__":
             hemi = int(val)
             
     ens_ts, dates = calc_syn_GMSST_TS(run_type, ref_start, ref_end, True)
-    ens_ts = ens_ts.byteswap().newbyteorder()
+    ens_ts = ens_ts.byteswap().newbyteorder() - 273.15
     ens_sic_ts, dates_sic = calc_syn_SICEXT_TS(run_type, ref_start, ref_end, True)
     hadisst_nh, hadisst_sh, hadisst_dates = calc_HadISST_GMSST_TS()
     hadsic_nh, hadsic_sh, hadisst_dates = calc_HadISST_GMSST_SICEXT()
+    hadisst_nh -= 273.15
     # create the northern hemisphere plot
     plot_month=False
     if plot_month:
@@ -192,6 +210,7 @@ if __name__ == "__main__":
         sp0 = plt.subplot(111)
         sp1 = sp0.twinx()
         S = ens_ts.shape
+        print S
         ens_sst_yr_mean = numpy.zeros([S[0], S[1], S[2]/12], 'f')
         ens_sic_yr_mean = numpy.zeros([S[0], S[1], S[2]/12], 'f')
         new_dates = dates[6::12]
@@ -222,7 +241,14 @@ if __name__ == "__main__":
         
         sp0.fill_between(new_dates, sst_min[hemi], sst_max[hemi], facecolor='r', alpha=0.5, zorder=0)
         sp1.fill_between(new_dates, sic_min[hemi], sic_max[hemi], facecolor='b', alpha=0.5, zorder=0)
-            
+        
+        # print the min and max of the GMT equivalents
+        slope = 0.669
+        inter = 0.017
+        
+        gmt_diff = (sst_max[hemi]-inter)/slope - (sst_min[hemi]-inter)/slope
+        print gmt_diff[0], gmt_diff[-1]
+        
         for a in range(0, ens_ts.shape[1]):
             sp0.plot(new_dates, ens_sst_yr_mean[hemi,a], 'r', zorder=1)
             sp1.plot(new_dates, ens_sic_yr_mean[hemi,a], 'b', zorder=1)
@@ -233,13 +259,19 @@ if __name__ == "__main__":
         else:
             sp0.plot(hadisst_dates[6::12], hadisst_sh_yr_mn, 'k', lw=2.0, zorder=1)
             sp1.plot(hadisst_dates[6::12], hadsic_sh_yr_mn, 'k', lw=2.0, zorder=1)
-    sp0.set_xlim([1850,2100])
-    sp1.set_xlim([1850,2100])
-    
-    fig.set_size_inches(10,5)
-    if hemi == 0:
-        name = "NH_SST_SIC.png"
-    else:
-        name = "SH_SST_SIC.png"
+    sp0.set_xlim([1899,2100])
+    sp0.set_ylabel("Mean SST, $^\circ$ C")
+    sp0.set_xlabel("Year")
 
+    sp1.set_xlim([1899,2100])
+    sp1.set_ylabel("Total sea-ice cover, km$^2$")
+    
+    fig.set_size_inches(10,6)
+    base_dir = "/Users/Neil/Google Drive/Presentations/EGU_2016/CREDIBLE_SST/"
+    if hemi == 0:
+        name = base_dir+"NH_SST_SIC_"+run_type+".png"
+    else:
+        name = base_dir+"SH_SST_SIC_"+run_type+".png"
+
+    plt.tight_layout()
     plt.savefig(name)

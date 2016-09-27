@@ -25,14 +25,13 @@
 import os, sys, getopt
 from create_HadISST_sst_anoms import *
 from create_CMIP5_sst_anoms import get_start_end_periods
-from calc_CMIP5_EOFs import save_pcs
+from calc_CMIP5_EOFs import save_pcs, save_eigenvalues
 from cmip5_functions import save_3d_file, load_data, load_sst_data, reconstruct_field, calc_GMSST
 from cdo import *
 import numpy
-from netcdf_file import *
+from scipy.io.netcdf import *
 from eofs.standard import Eof
 import matplotlib.pyplot as plt
-
 
 #############################################################################
 
@@ -46,6 +45,13 @@ def get_HadISST_monthly_residual_EOFs_fname(histo_sy, histo_ey, run_n):
 def get_HadISST_monthly_residual_PCs_fname(histo_sy, histo_ey, run_n):
     out_dir = get_HadISST_output_directory(histo_sy, histo_ey, run_n)
     out_fname = out_dir+"/hadisst_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+str(run_n)+ "_monthly_residual_PCs.nc"
+    return out_fname
+
+#############################################################################
+
+def get_HadISST_monthly_residual_EVs_fname(histo_sy, histo_ey, run_n):
+    out_dir = get_HadISST_output_directory(histo_sy, histo_ey, run_n)
+    out_fname = out_dir+"/hadisst_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+str(run_n)+ "_monthly_residual_EVs.nc"
     return out_fname
 
 #############################################################################
@@ -81,7 +87,7 @@ def calc_HadISST_residual_EOFs(histo_sy, histo_ey, run_n):
 
 #############################################################################
 
-def calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, run_n):
+def calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, run_n, n_eofs=22):
     # load the already calculated residuals
     resid_fname = get_HadISST_monthly_residuals_fname(histo_sy, histo_ey, run_n)
     # note that we don't have to subtract the annual cycle any more as the
@@ -101,19 +107,23 @@ def calc_HadISST_monthly_residual_EOFs(histo_sy, histo_ey, ref_start, ref_end, r
     coslat = numpy.cos(numpy.deg2rad(lats_var[:])).clip(0., 1.)
     wgts = numpy.sqrt(coslat)[..., numpy.newaxis]
     eof_solver = Eof(sst_resids, center=True, weights=wgts)
-    pcs = eof_solver.pcs(npcs=None)
-    eofs = eof_solver.eofs(neofs=None)
-    varfrac = eof_solver.varianceFraction(neigs=None)
-    print varfrac[0:20], numpy.sum(varfrac[0:20])
+    pcs = eof_solver.pcs(npcs=n_eofs)
+    eofs = eof_solver.eofs(neofs=n_eofs)
+    varfrac = eof_solver.varianceFraction(neigs=n_eofs)
+    evs = eof_solver.eigenvalues(neigs=n_eofs)
+    evs = evs.reshape([1,evs.shape[0]])
+    print evs.shape
     
     # get the output names
     out_eofs_fname = get_HadISST_monthly_residual_EOFs_fname(histo_sy, histo_ey, run_n)
     out_pcs_fname  = get_HadISST_monthly_residual_PCs_fname(histo_sy, histo_ey, run_n)
-    
+    out_evs_fname  = get_HadISST_monthly_residual_EVs_fname(histo_sy, histo_ey, run_n)
+
     # save the eofs and pcs
     save_3d_file(out_eofs_fname, eofs, attrs, lats_var, lons_var)
     out_pcs = pcs.reshape([pcs.shape[0],1,pcs.shape[1]])
     save_pcs(out_pcs_fname, out_pcs, attrs)
+    save_eigenvalues(out_evs_fname, evs, attrs)
     resid_mon_fh.close()
 
 #############################################################################

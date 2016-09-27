@@ -143,7 +143,7 @@ def get_concat_anom_sst_smooth_model_mean_fname(idx0, idx1, run_type, ref_start,
 
 def get_concat_anom_sst_ens_mean_fname(run_type, ref_start, ref_end, monthly):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_rcp45_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean"
+    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"
@@ -154,7 +154,7 @@ def get_concat_anom_sst_ens_mean_fname(run_type, ref_start, ref_end, monthly):
 
 def get_concat_anom_sst_ens_mean_smooth_fname(run_type, ref_start, ref_end, monthly):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
-    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_rcp45_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean_smooth"
+    out_name = "cmip5_hist_"+str(histo_sy)+"_"+str(histo_ey)+"_"+run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+"_ens_mean_smooth"
     if monthly:
         out_name += "_mon"
     out_name += ".nc"

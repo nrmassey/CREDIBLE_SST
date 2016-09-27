@@ -28,7 +28,7 @@ from create_HadISST_sst_anoms import get_HadISST_smooth_fname, get_HadISST_month
 from cmip5_functions import load_data, reconstruct_field, calc_GMSST, load_sst_data
 from calc_HadISST_residual_EOFs import get_HadISST_monthly_residual_EOFs_fname, get_HadISST_monthly_residual_PCs_fname
 import numpy
-from netcdf_file import *
+from scipy.io.netcdf import *
 from ARN import ARN
 from eofs.standard import Eof
 import pyximport
@@ -37,7 +37,7 @@ from zonal_smoother import *
 
 #############################################################################
 
-def get_output_directory(run_type, ref_start, ref_end, eof_year):
+def get_SST_output_directory(run_type, ref_start, ref_end, eof_year):
     histo_sy, histo_ey, rcp_sy, rcp_ey = get_start_end_periods()
     out_dir = "HadISST_"+str(histo_sy)+"_"+str(histo_ey)+"_"+\
               run_type+"_"+str(rcp_sy)+"_"+str(rcp_ey)+\
@@ -58,7 +58,7 @@ def get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, percenti
         intvarstr = "varyear"
     elif intvarmode == 2:
         intvarstr = "varmon"
-    out_dir = get_output_directory(run_type, ref_start, ref_end, eof_year)
+    out_dir = get_SST_output_directory(run_type, ref_start, ref_end, eof_year)
     out_name = out_dir + "_n"+str(neofs)+"_a"+str(percentile)+"_"+intvarstr+"_ssts"
     if monthly:
         out_name += "_mon"
@@ -73,7 +73,7 @@ def get_syn_sst_filename(run_type, ref_start, ref_end, neofs, eof_year, percenti
 
 #############################################################################
 
-def create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=20, run_n=400):
+def create_monthly_intvar(run_type, ref_start, ref_end, n_pcs=22, run_n=400):
     # load in the PCs and EOFs
     histo_sy = 1899
     histo_ey = 2010

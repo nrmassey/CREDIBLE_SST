@@ -29,7 +29,8 @@ def get_output_directory(run_type, ref_sy, ref_ey, year=None):
     elif uname[1] == "ouce-linux-01.ouce.ox.ac.uk" or \
          uname[1] == "ouce-linux-02.ouce.ox.ac.uk":
         out_dir_base = "/soge-home/staff/coml0118/CREDIBLE_output/output/"
-        
+
+
     out_dir = out_dir_base + run_type+"_"+str(ref_sy)+"_"+str(ref_ey)
     if not year is None:
         out_dir += "_y"+str(year)
